@@ -7,7 +7,7 @@ cd "$(dirname "$0")"
 
 REPO="codeden"
 DESC="码岛 CodeDen — 把 MacBook 刘海变成 AI 编码助手的实时基地（像素风 + 审批回写 + 怪兽养成）"
-ZIP="dist/码岛-CodeDen-v0.1.zip"
+ZIP="dist/CodeDen-v0.1-mac.zip"   # 纯英文名（GitHub 资产名会丢掉中文字符）
 
 # 确认已登录
 gh auth status >/dev/null 2>&1 || { echo "❌ 还没登录。请先在终端运行： gh auth login"; exit 1; }

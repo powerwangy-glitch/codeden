@@ -52,6 +52,12 @@ Claude Code ──hooks──▶ bridge/notch-bridge.py ──追加──▶ ~/
 
 收起态聚合优先级：需要你 > 运行 > 完成 > 休息。额度 ≥90% 时刘海尾部亮红 ▲。
 
+## 下载安装
+
+最新版本见 [Releases](https://github.com/powerwangy-glitch/codeden/releases)：
+下载 `CodeDen-v0.1-mac.zip` → 解压 → 把 `NotchIsland.app` 拖进 `/Applications` → 打开 →
+跟新人引导一键接入 Claude Code。（首次打开若被 Gatekeeper 拦：右键 → 打开。）
+
 ## 构建 & 运行
 
 开发态：
