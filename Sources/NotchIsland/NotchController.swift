@@ -38,8 +38,13 @@ final class NotchController {
         // 弹簧每帧 → 更新 SwiftUI 背景尺寸 + 窗口 frame（顶部居中）
         spring.onStep = { [weak self] size in
             guard let self else { return }
-            self.store.islandSize = size
-            self.applyFrame(size)
+            // 下限 = 刘海尺寸：收起回弹时绝不缩到刘海以内（否则会露出物理刘海，出现两个黑框）
+            let n = self.store.notch
+            let clamped = n.hasNotch
+                ? CGSize(width: max(size.width, n.width), height: max(size.height, n.height))
+                : size
+            self.store.islandSize = clamped
+            self.applyFrame(clamped)
         }
 
         // 展开/收起切换 → 测量目标自然尺寸 → 弹过去

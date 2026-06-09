@@ -37,6 +37,12 @@ struct IslandView: View {
             if inside { store.expanded = true }
             else if !store.sessions.contains(where: { $0.state == .waiting }) { store.expanded = false }
         }
+        .onTapGesture {
+            // 收起态点击：只有一个会话直接跳转，多个则展开
+            guard !store.expanded else { return }
+            if store.sessions.count == 1 { store.jump(store.sessions[0]) }
+            else { store.expanded = true }
+        }
     }
 }
 

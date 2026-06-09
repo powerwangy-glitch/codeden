@@ -13,7 +13,7 @@ final class SpringSize {
     /// stiffness 越大越快，damping 越小越「Q弹」(过冲越多)。
     /// zeta = damping / (2*sqrt(stiffness)) ≈ 0.52 → 明显回弹但不过分。
     var stiffness: Double = 260
-    var damping: Double = 17
+    var damping: Double = 20      // 略大阻尼：回弹更收敛，配合下限钳制避免缩到刘海以内
 
     var onStep: ((CGSize) -> Void)?
 

@@ -171,15 +171,11 @@ final class AppStore: ObservableObject {
 
     func jump(_ session: Session) {
         guard let bid = session.bundleID, !bid.isEmpty else { return }
-        if let app = NSRunningApplication.runningApplications(withBundleIdentifier: bid).first {
-            app.activate(options: [.activateAllWindows])
-        } else {
-            // 没在跑就用 open -b 启动
-            let p = Process()
-            p.executableURL = URL(fileURLWithPath: "/usr/bin/open")
-            p.arguments = ["-b", bid]
-            try? p.run()
-        }
+        // open -b 最可靠：无论目标 App 是否在跑都会唤到前台（后台 agent 调 activate 常失效）
+        let p = Process()
+        p.executableURL = URL(fileURLWithPath: "/usr/bin/open")
+        p.arguments = ["-b", bid]
+        try? p.run()
         Chiptune.shared.play(.select, enabled: soundEnabled)
     }
 
