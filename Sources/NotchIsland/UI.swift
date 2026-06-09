@@ -179,19 +179,24 @@ struct QuotaHeader: View {
     }
 
     @ViewBuilder private var leftGroup: some View {
-        HStack(spacing: 9) {
-            SpriteView(agent: .claude, size: 18)
+        HStack(spacing: 12) {
             if store.showQuota {
-                ForEach(store.quotas.indices, id: \.self) { i in
-                    let q = store.quotas[i]
-                    quotaSeg(q.fiveHour)
-                    Text("|").foregroundColor(.niText3).opacity(0.45)
-                    quotaSeg(q.sevenDay)
-                    if i < store.quotas.count - 1 { Text("·").foregroundColor(.niText3) }
-                }
                 if store.quotas.isEmpty {
+                    SpriteView(agent: .claude, size: 18)
                     Text("额度读取中…").font(.system(size: 11)).foregroundColor(.niText3)
+                } else {
+                    ForEach(store.quotas.indices, id: \.self) { i in
+                        let q = store.quotas[i]
+                        HStack(spacing: 6) {
+                            SpriteView(agent: q.agent, size: 16)   // 每个额度配对应 agent 图标
+                            quotaSeg(q.fiveHour)
+                            Text("|").foregroundColor(.niText3).opacity(0.45)
+                            quotaSeg(q.sevenDay)
+                        }
+                    }
                 }
+            } else {
+                SpriteView(agent: .claude, size: 18)
             }
         }
     }

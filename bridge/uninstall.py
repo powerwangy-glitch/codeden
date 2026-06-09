@@ -35,6 +35,19 @@ def main():
         else:
             del hooks[ev]
 
+    # 还原 statusLine
+    sl = (data.get("statusLine") or {}).get("command", "")
+    if "notch-statusline" in sl:
+        prev_file = os.path.join(HOME, ".notch-island", ".prev-statusline")
+        prev = ""
+        if os.path.exists(prev_file):
+            prev = open(prev_file).read().strip()
+        if prev:
+            data["statusLine"] = {"type": "command", "command": prev}
+        else:
+            data.pop("statusLine", None)
+        print("已还原 statusLine")
+
     with open(SETTINGS, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
         f.write("\n")

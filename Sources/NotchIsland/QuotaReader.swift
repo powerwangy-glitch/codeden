@@ -53,14 +53,13 @@ enum QuotaReader {
         return QuotaWindow(label: label, usedPercent: pct, resetsAt: reset)
     }
 
+    // 只读码岛自己采集的缓存，避免串到别的 App（如 Vibe Island）的数据导致额度不符。
     private static func firstJSON(_ names: [String]) -> [String: Any]? {
-        for dir in [notchDir, vibeDir] {
-            for n in names {
-                let url = dir.appendingPathComponent(n)
-                if let data = try? Data(contentsOf: url),
-                   let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
-                    return obj
-                }
+        for n in names {
+            let url = notchDir.appendingPathComponent(n)
+            if let data = try? Data(contentsOf: url),
+               let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+                return obj
             }
         }
         return nil

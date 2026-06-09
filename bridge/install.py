@@ -40,6 +40,36 @@ def already_has(group_list):
     return False
 
 
+def setup_statusline(data):
+    """安装 statusLine 采集器：抓 .rate_limits 写码岛缓存，并链式调用原有 statusLine（保留 Vibe 等）。"""
+    py_src = os.path.join(os.path.dirname(__file__), "notch-statusline.py")
+    py_dst = os.path.join(BIN_DIR, "notch-statusline.py")
+    sh_dst = os.path.join(BIN_DIR, "notch-statusline.sh")
+    if os.path.exists(py_src) and os.path.abspath(py_src) != os.path.abspath(py_dst):
+        shutil.copy2(py_src, py_dst)
+    os.chmod(py_dst, 0o755)
+
+    prev = (data.get("statusLine") or {}).get("command", "")
+    if "notch-statusline" in prev:
+        prev = ""  # 已是我们的，避免自链
+    # 记下原 statusLine 以便卸载时还原
+    if prev:
+        with open(os.path.join(HOME, ".notch-island", ".prev-statusline"), "w") as f:
+            f.write(prev)
+
+    chain = ('printf "%s" "$input" | eval "$PREV"' if prev else "")
+    sh = f"""#!/bin/bash
+input=$(cat)
+printf '%s' "$input" | /usr/bin/env python3 "{py_dst}" 2>/dev/null
+PREV={json.dumps(prev)}
+{chain}
+"""
+    with open(sh_dst, "w") as f:
+        f.write(sh)
+    os.chmod(sh_dst, 0o755)
+    data["statusLine"] = {"type": "command", "command": sh_dst}
+
+
 def main():
     # 把桥接脚本复制到稳定路径
     os.makedirs(BIN_DIR, exist_ok=True)
@@ -71,12 +101,16 @@ def main():
         arr.append(group)
         added += 1
 
+    # 安装额度采集 statusLine（链式保留原有）
+    setup_statusline(data)
+
     with open(SETTINGS, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
         f.write("\n")
 
     os.makedirs(os.path.join(HOME, ".notch-island"), exist_ok=True)
     print("已安装 NotchIsland hook：新增 %d 个事件钩子" % added)
+    print("已安装额度采集 statusLine（链式保留原有 statusLine）")
     print("脚本路径：", SCRIPT)
     print("重启正在进行的 Claude Code 会话后生效（新会话自动生效）。")
 
