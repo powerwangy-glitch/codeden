@@ -1,0 +1,251 @@
+import SwiftUI
+
+// MARK: - 颜色
+
+extension Color {
+    static let niText  = Color(white: 0.95)
+    static let niText2 = Color(white: 0.66)
+    static let niText3 = Color(white: 0.42)
+    static let niHair  = Color.white.opacity(0.07)
+    static let niBG    = Color(red: 0x0C/255, green: 0x0C/255, blue: 0x0E/255)
+    static let niTool  = Color(red: 0x7A/255, green: 0xA2/255, blue: 1.0)
+    static let niDone  = Color(red: 0x5F/255, green: 0xD4/255, blue: 0x7F/255)
+    static let niWarn  = Color(red: 1.0, green: 0xB3/255, blue: 0x40/255)
+    static let niDel   = Color(red: 1.0, green: 0x7A/255, blue: 0x72/255)
+}
+
+// MARK: - 可见岛体：背景尺寸由弹簧 islandSize 驱动 → 果冻回弹
+
+struct IslandView: View {
+    @ObservedObject var store: AppStore
+
+    var body: some View {
+        ZStack(alignment: .top) {
+            // 背景黑岛体跟随弹簧尺寸拉伸/回弹（果冻感的主体）
+            RoundedCorners(radius: store.expanded ? 22 : 18)
+                .fill(store.expanded ? Color.niBG : Color.black)
+                .frame(width: store.islandSize.width, height: store.islandSize.height)
+            // 内容自然尺寸、顶部对齐；过冲时露出的空隙由背景填充
+            ContentOnly(store: store)
+                .frame(width: store.islandSize.width, alignment: .center)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(width: store.islandSize.width, height: store.islandSize.height, alignment: .top)
+        .clipShape(RoundedCorners(radius: store.expanded ? 22 : 18))
+        .contentShape(Rectangle())
+        .onHover { inside in
+            if inside { store.expanded = true }
+            else if !store.sessions.contains(where: { $0.state == .waiting }) { store.expanded = false }
+        }
+    }
+}
+
+/// 纯内容（无背景、无固定外框），既用于显示也用于离屏测量目标尺寸。
+struct ContentOnly: View {
+    @ObservedObject var store: AppStore
+    var body: some View {
+        if store.expanded { PanelView(store: store) }
+        else { PillView(store: store) }
+    }
+}
+
+/// 只圆下面两个角（贴住屏幕顶边）。
+struct RoundedCorners: Shape {
+    var radius: CGFloat
+    func path(in rect: CGRect) -> Path {
+        let r = radius
+        var p = Path()
+        p.move(to: CGPoint(x: rect.minX, y: rect.minY))
+        p.addLine(to: CGPoint(x: rect.maxX, y: rect.minY))
+        p.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY - r))
+        p.addArc(center: CGPoint(x: rect.maxX - r, y: rect.maxY - r), radius: r, startAngle: .degrees(0), endAngle: .degrees(90), clockwise: false)
+        p.addLine(to: CGPoint(x: rect.minX + r, y: rect.maxY))
+        p.addArc(center: CGPoint(x: rect.minX + r, y: rect.maxY - r), radius: r, startAngle: .degrees(90), endAngle: .degrees(180), clockwise: false)
+        p.closeSubpath()
+        return p
+    }
+}
+
+// MARK: - 收起态药丸
+
+struct PillView: View {
+    @ObservedObject var store: AppStore
+
+    var body: some View {
+        HStack(spacing: 8) {
+            switch store.pillState {
+            case .rest:
+                SpriteView(agent: .claude, size: 20, sleeping: true)
+                Text("z z Z").font(.system(size: 10, design: .monospaced)).foregroundColor(.niText3)
+                Text("都在休息").font(.system(size: 11.5)).foregroundColor(.niText2)
+            default:
+                HStack(spacing: 5) {
+                    ForEach(Array(store.sessions.prefix(3))) { s in
+                        SpriteView(agent: s.agent, size: 20, running: s.state == .running)
+                    }
+                }
+                if store.sessions.count > 3 {
+                    Text("+\(store.sessions.count - 3)").font(.system(size: 11)).foregroundColor(.niText3)
+                }
+                statusWord
+                if store.anyQuotaDanger {
+                    Text("▲").font(.system(size: 12)).foregroundColor(.niDel)
+                }
+            }
+        }
+        .padding(.horizontal, 14)
+        .frame(height: 34)
+        .fixedSize()
+    }
+
+    @ViewBuilder private var statusWord: some View {
+        switch store.pillState {
+        case .waiting:
+            Text("⚡").font(.system(size: 12)).foregroundColor(.niWarn)
+            Text("需要你").font(.system(size: 11.5).weight(.semibold)).foregroundColor(.niText)
+        case .done:
+            Text("✓").font(.system(size: 12)).foregroundColor(.niDone)
+            Text("完成").font(.system(size: 11.5)).foregroundColor(.niText2)
+        case .running:
+            (Text("\(store.runningCount)").font(.system(size: 11.5).weight(.semibold)).foregroundColor(.niText)
+             + Text(" 个在跑").font(.system(size: 11.5)).foregroundColor(.niText2))
+        case .rest:
+            EmptyView()
+        }
+    }
+}
+
+// MARK: - 展开面板
+
+struct PanelView: View {
+    @ObservedObject var store: AppStore
+
+    var body: some View {
+        VStack(spacing: 0) {
+            QuotaHeader(store: store)
+            if store.sessions.isEmpty {
+                VStack(spacing: 8) {
+                    Text("z z Z").font(.system(size: 11, design: .monospaced)).foregroundColor(.niText3)
+                    Text("没有正在运行的 agent").font(.system(size: 12)).foregroundColor(.niText3)
+                }.padding(.vertical, 18).frame(maxWidth: .infinity)
+            } else {
+                ForEach(Array(store.sessions.enumerated()), id: \.element.id) { idx, s in
+                    if idx > 0 { Divider().background(Color.niHair) }
+                    ItemRow(session: s) { allow in store.decide(s, allow: allow) }
+                }
+            }
+        }
+        .frame(width: 520, alignment: .top)
+        .fixedSize(horizontal: false, vertical: true)
+    }
+}
+
+struct QuotaHeader: View {
+    @ObservedObject var store: AppStore
+    var body: some View {
+        HStack(spacing: 9) {
+            SpriteView(agent: .claude, size: 18)
+            if store.showQuota {
+                ForEach(store.quotas.indices, id: \.self) { i in
+                    let q = store.quotas[i]
+                    quotaSeg(q.fiveHour)
+                    Text("|").foregroundColor(.niText3).opacity(0.45)
+                    quotaSeg(q.sevenDay)
+                    if i < store.quotas.count - 1 { Text("·").foregroundColor(.niText3) }
+                }
+                if store.quotas.isEmpty {
+                    Text("额度读取中…").font(.system(size: 11)).foregroundColor(.niText3)
+                }
+            }
+            Spacer(minLength: 8)
+            Text(store.soundEnabled ? "🔊" : "🔇").font(.system(size: 14)).foregroundColor(.niText3)
+                .onTapGesture { store.soundEnabled.toggle() }
+            Text("⚙").font(.system(size: 14)).foregroundColor(.niText3)
+                .onTapGesture { store.openSettings() }
+        }
+        .padding(.horizontal, 16).padding(.vertical, 11)
+    }
+
+    @ViewBuilder private func quotaSeg(_ w: QuotaWindow) -> some View {
+        let c: Color = w.usedPercent >= 90 ? .niDel : w.usedPercent >= 70 ? .niWarn : .niDone
+        HStack(spacing: 4) {
+            Text(w.label).font(.system(size: 12.5)).foregroundColor(.niText3)
+            Text("\(w.usedPercent)%").font(.system(size: 12.5).weight(.semibold)).foregroundColor(c)
+            Text(w.resetLabel).font(.system(size: 12.5)).foregroundColor(.niText3)
+        }
+    }
+}
+
+struct ItemRow: View {
+    let session: Session
+    var onDecide: (Bool) -> Void = { _ in }
+    var body: some View {
+        HStack(alignment: .top, spacing: 13) {
+            // 左侧精灵簇（主 + 子 agent）
+            HStack(spacing: 2) {
+                ForEach(0...session.subagents, id: \.self) { _ in
+                    SpriteView(agent: session.agent, size: 17, running: session.state == .running)
+                }
+            }
+            .frame(width: 40, alignment: .leading)
+
+            VStack(alignment: .leading, spacing: 6) {
+                // 第一行：标题 + 标签 + 时间
+                HStack(spacing: 8) {
+                    Text("\(session.project) · \(session.task)")
+                        .font(.system(size: 13).weight(.semibold)).foregroundColor(.niText)
+                        .lineLimit(1).truncationMode(.tail)
+                    Spacer(minLength: 6)
+                    ForEach(session.badges, id: \.self) { b in badge(b) }
+                    agentBadge(session.agent)
+                    Text(session.elapsedLabel).font(.system(size: 11)).foregroundColor(.niText3)
+                }
+                // 第二行：你说的话
+                if !session.user.isEmpty {
+                    Text("你：\(session.user)").font(.system(size: 12)).foregroundColor(.niText2)
+                        .lineLimit(1).truncationMode(.tail)
+                }
+                // 第三行：当前动作 / 审批 / 提问
+                activity
+                // 审批按钮（仅在等待你审批且可回写时出现）
+                if session.requestID != nil, session.state == .waiting {
+                    HStack(spacing: 18) {
+                        Button { onDecide(true) } label: {
+                            Text("允许").font(.system(size: 12.5).weight(.semibold)).foregroundColor(.niDone)
+                        }.buttonStyle(.plain)
+                        Button { onDecide(false) } label: {
+                            Text("拒绝").font(.system(size: 12.5).weight(.semibold)).foregroundColor(.niText2)
+                        }.buttonStyle(.plain)
+                    }
+                    .padding(.top, 4)
+                }
+            }
+        }
+        .padding(.horizontal, 16).padding(.vertical, 13)
+    }
+
+    @ViewBuilder private var activity: some View {
+        HStack(spacing: 6) {
+            if let t = session.line.tool {
+                Text(t).font(.system(size: 12)).foregroundColor(.niTool)
+            }
+            Text(session.line.text).font(.system(size: 12))
+                .foregroundColor(session.state == .done ? .niDone : .niText3)
+                .lineLimit(1).truncationMode(.tail)
+        }
+    }
+
+    private func agentBadge(_ a: AgentKind) -> some View {
+        Text(a.displayName).font(.system(size: 10))
+            .padding(.horizontal, 7).padding(.vertical, 2)
+            .background(a.color.opacity(0.13)).foregroundColor(a.color)
+            .clipShape(RoundedRectangle(cornerRadius: 6))
+    }
+    private func badge(_ b: Session.Badge) -> some View {
+        let c: Color = b.kind == .auto ? .niDel : .niText2
+        return Text(b.text).font(.system(size: 10))
+            .padding(.horizontal, 7).padding(.vertical, 2)
+            .background(c.opacity(b.kind == .auto ? 0.14 : 0.08)).foregroundColor(c)
+            .clipShape(RoundedRectangle(cornerRadius: 6))
+    }
+}

@@ -1,0 +1,12 @@
+# 构建产物
+.build/
+dist/
+*.o
+*.swiftmodule
+
+# 图标中间产物（保留 AppIcon.icns）
+icon/AppIcon.iconset/
+
+# 系统
+.DS_Store
+*.xcuserstate
