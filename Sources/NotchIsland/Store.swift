@@ -11,6 +11,8 @@ final class AppStore: ObservableObject {
     @Published var expanded: Bool = false
     /// 由弹簧驱动的当前刘海尺寸（含过冲），SwiftUI 背景读它来一起回弹。
     @Published var islandSize: CGSize = CGSize(width: 280, height: 34)
+    /// 物理刘海几何（由 NotchController 注入），UI 据此把内容放到刘海两侧。
+    @Published var notch: NotchMetrics = .none
 
     // MARK: - 持久化偏好（UserDefaults）
     private static let d = UserDefaults.standard

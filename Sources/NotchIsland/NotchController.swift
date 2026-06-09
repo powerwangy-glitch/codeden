@@ -47,12 +47,27 @@ final class NotchController {
             .removeDuplicates()
             .sink { [weak self] _ in self?.retarget() }
             .store(in: &bag)
+
+        // 屏幕变化（插拔显示器/分辨率）→ 重新读刘海几何
+        NotificationCenter.default.addObserver(
+            forName: NSApplication.didChangeScreenParametersNotification,
+            object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.refreshNotch(); self?.retarget() }
+        }
+    }
+
+    private func refreshNotch() {
+        store.notch = NotchMetrics.current()?.metrics ?? .none
     }
 
     func show() {
-        let t = measuredTargetSize()
-        spring.snap(to: t)
-        panel.orderFrontRegardless()
+        refreshNotch()
+        // 等 SwiftUI 用上新几何后再测量首帧
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            self.spring.snap(to: self.measuredTargetSize())
+            self.panel.orderFrontRegardless()
+        }
     }
 
     /// 测量当前状态（pill 或 panel）的内容自然尺寸。

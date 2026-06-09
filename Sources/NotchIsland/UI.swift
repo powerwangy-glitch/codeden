@@ -72,45 +72,62 @@ struct PillView: View {
     @ObservedObject var store: AppStore
 
     var body: some View {
-        HStack(spacing: 8) {
-            switch store.pillState {
-            case .rest:
-                SpriteView(agent: .claude, size: 20, sleeping: true)
-                Text("z z Z").font(.system(size: 10, design: .monospaced)).foregroundColor(.niText3)
-                Text("都在休息").font(.system(size: 11.5)).foregroundColor(.niText2)
-            default:
-                HStack(spacing: 5) {
-                    ForEach(Array(store.sessions.prefix(3))) { s in
-                        SpriteView(agent: s.agent, size: 20, running: s.state == .running)
-                    }
+        let n = store.notch
+        if n.hasNotch {
+            // 横跨刘海：左翼放精灵、右翼放状态，中间让出刘海宽度（内容全在刘海外）
+            HStack(spacing: 0) {
+                leftWing.frame(width: NotchLayout.wing, alignment: .trailing)
+                    .padding(.trailing, 10)
+                Color.clear.frame(width: n.width)
+                rightWing.frame(width: NotchLayout.wing, alignment: .leading)
+                    .padding(.leading, 10)
+            }
+            .frame(height: n.height)            // 与刘海等高，齐平不突出
+        } else {
+            // 无刘海（外接屏）：普通居中条
+            HStack(spacing: 8) { leftWing; rightWing }
+                .padding(.horizontal, 14)
+                .frame(height: NotchLayout.fallbackHeight)
+                .fixedSize()
+        }
+    }
+
+    // 左翼：精灵们 / 休息时的睡眠精灵
+    @ViewBuilder private var leftWing: some View {
+        HStack(spacing: 5) {
+            if store.pillState == .rest {
+                SpriteView(agent: .claude, size: 18, sleeping: true)
+                Text("z z Z").font(.system(size: 9, design: .monospaced)).foregroundColor(.niText3)
+            } else {
+                ForEach(Array(store.sessions.prefix(3))) { s in
+                    SpriteView(agent: s.agent, size: 18, running: s.state == .running)
                 }
                 if store.sessions.count > 3 {
-                    Text("+\(store.sessions.count - 3)").font(.system(size: 11)).foregroundColor(.niText3)
-                }
-                statusWord
-                if store.anyQuotaDanger {
-                    Text("▲").font(.system(size: 12)).foregroundColor(.niDel)
+                    Text("+\(store.sessions.count - 3)").font(.system(size: 10)).foregroundColor(.niText3)
                 }
             }
         }
-        .padding(.horizontal, 14)
-        .frame(height: 34)
-        .fixedSize()
     }
 
-    @ViewBuilder private var statusWord: some View {
-        switch store.pillState {
-        case .waiting:
-            Text("⚡").font(.system(size: 12)).foregroundColor(.niWarn)
-            Text("需要你").font(.system(size: 11.5).weight(.semibold)).foregroundColor(.niText)
-        case .done:
-            Text("✓").font(.system(size: 12)).foregroundColor(.niDone)
-            Text("完成").font(.system(size: 11.5)).foregroundColor(.niText2)
-        case .running:
-            (Text("\(store.runningCount)").font(.system(size: 11.5).weight(.semibold)).foregroundColor(.niText)
-             + Text(" 个在跑").font(.system(size: 11.5)).foregroundColor(.niText2))
-        case .rest:
-            EmptyView()
+    // 右翼：状态词 + 额度危险标
+    @ViewBuilder private var rightWing: some View {
+        HStack(spacing: 5) {
+            switch store.pillState {
+            case .rest:
+                Text("都在休息").font(.system(size: 11)).foregroundColor(.niText2)
+            case .waiting:
+                Text("⚡").font(.system(size: 11)).foregroundColor(.niWarn)
+                Text("需要你").font(.system(size: 11).weight(.semibold)).foregroundColor(.niText)
+            case .done:
+                Text("✓").font(.system(size: 11)).foregroundColor(.niDone)
+                Text("完成").font(.system(size: 11)).foregroundColor(.niText2)
+            case .running:
+                (Text("\(store.runningCount)").font(.system(size: 11).weight(.semibold)).foregroundColor(.niText)
+                 + Text(" 个在跑").font(.system(size: 11)).foregroundColor(.niText2))
+            }
+            if store.anyQuotaDanger {
+                Text("▲").font(.system(size: 11)).foregroundColor(.niDel)
+            }
         }
     }
 }
@@ -143,6 +160,19 @@ struct PanelView: View {
 struct QuotaHeader: View {
     @ObservedObject var store: AppStore
     var body: some View {
+        let n = store.notch
+        HStack(spacing: 0) {
+            leftGroup
+            Spacer(minLength: 12)
+            if n.hasNotch { Color.clear.frame(width: n.width); Spacer(minLength: 12) }  // 让出刘海
+            rightGroup
+        }
+        .padding(.horizontal, 16)
+        .frame(minHeight: n.hasNotch ? n.height : 44)   // 顶栏至少和刘海等高，列表从刘海下方开始
+        .padding(.vertical, n.hasNotch ? 0 : 6)
+    }
+
+    @ViewBuilder private var leftGroup: some View {
         HStack(spacing: 9) {
             SpriteView(agent: .claude, size: 18)
             if store.showQuota {
@@ -157,13 +187,16 @@ struct QuotaHeader: View {
                     Text("额度读取中…").font(.system(size: 11)).foregroundColor(.niText3)
                 }
             }
-            Spacer(minLength: 8)
+        }
+    }
+
+    @ViewBuilder private var rightGroup: some View {
+        HStack(spacing: 14) {
             Text(store.soundEnabled ? "🔊" : "🔇").font(.system(size: 14)).foregroundColor(.niText3)
                 .onTapGesture { store.soundEnabled.toggle() }
             Text("⚙").font(.system(size: 14)).foregroundColor(.niText3)
                 .onTapGesture { store.openSettings() }
         }
-        .padding(.horizontal, 16).padding(.vertical, 11)
     }
 
     @ViewBuilder private func quotaSeg(_ w: QuotaWindow) -> some View {
