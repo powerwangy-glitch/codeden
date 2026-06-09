@@ -68,6 +68,8 @@ struct IngestEvent: Codable {
     var message: String?              // Notification 文本
     var subagents: Int?               // 当前子 agent 数
     var request_id: String?           // PermissionRequest 关联 id（审批回写用）
+    var term: String?                 // 终端显示名（iTerm2/Ghostty…）
+    var term_bundle: String?          // 终端 bundle id（点击跳转用）
 }
 
 /// 渲染用的会话视图模型。
@@ -83,6 +85,8 @@ struct Session: Identifiable {
     var lastUpdate: Date
     var subagents: Int                // 额外 sprite 数量
     var requestID: String? = nil      // 非空 = 正在等你审批（可回写决定）
+    var terminal: String = ""         // 终端显示名
+    var bundleID: String? = nil       // 终端 bundle id（点击跳转）
 
     struct ActivityLine {
         var tool: String?             // 上色的工具名，如 "Bash"

@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import AppKit
 import Combine
 import ServiceManagement
 
@@ -82,6 +83,8 @@ final class AppStore: ObservableObject {
         s.agent = agent
         if let p = e.project { s.project = p }
         if let sub = e.subagents { s.subagents = max(0, sub) }
+        if let t = e.term, !t.isEmpty { s.terminal = t }
+        if let b = e.term_bundle, !b.isEmpty { s.bundleID = b }
         s.lastUpdate = Date()
 
         let prev = s.state
@@ -162,6 +165,22 @@ final class AppStore: ObservableObject {
             }
         }
         onChange()
+    }
+
+    // MARK: - 跳转：把会话所在终端唤到前台
+
+    func jump(_ session: Session) {
+        guard let bid = session.bundleID, !bid.isEmpty else { return }
+        if let app = NSRunningApplication.runningApplications(withBundleIdentifier: bid).first {
+            app.activate(options: [.activateAllWindows])
+        } else {
+            // 没在跑就用 open -b 启动
+            let p = Process()
+            p.executableURL = URL(fileURLWithPath: "/usr/bin/open")
+            p.arguments = ["-b", bid]
+            try? p.run()
+        }
+        Chiptune.shared.play(.select, enabled: soundEnabled)
     }
 
     // MARK: - 审批回写

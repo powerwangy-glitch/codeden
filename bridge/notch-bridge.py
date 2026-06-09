@@ -169,6 +169,16 @@ def main():
     if prompt:                      # UserPromptSubmit 直接带 prompt，最准
         user = prompt
 
+    # 终端信息（用于点击跳转）：从环境变量读，hook 子进程继承自所在终端
+    TERM_NAMES = {
+        "iTerm.app": "iTerm2", "Apple_Terminal": "Terminal", "vscode": "VS Code",
+        "ghostty": "Ghostty", "WarpTerminal": "Warp", "Hyper": "Hyper",
+        "WezTerm": "WezTerm", "kitty": "kitty", "Tabby": "Tabby", "rio": "Rio",
+    }
+    tp = os.environ.get("TERM_PROGRAM")
+    term = TERM_NAMES.get(tp, tp)
+    term_bundle = os.environ.get("__CFBundleIdentifier")
+
     evt = {
         "ts": time.time(),
         "session": session,
@@ -181,6 +191,8 @@ def main():
         "user": user,
         "assistant": assistant,
         "message": message,
+        "term": term,
+        "term_bundle": term_bundle,
     }
     evt = {k: v for k, v in evt.items() if v is not None}
 

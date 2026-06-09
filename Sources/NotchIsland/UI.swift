@@ -139,6 +139,8 @@ struct PanelView: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            // 顶部让出刘海高度，所有内容落在刘海下方（完整可见）
+            if store.notch.hasNotch { Color.clear.frame(height: store.notch.height) }
             QuotaHeader(store: store)
             if store.sessions.isEmpty {
                 VStack(spacing: 8) {
@@ -148,11 +150,13 @@ struct PanelView: View {
             } else {
                 ForEach(Array(store.sessions.enumerated()), id: \.element.id) { idx, s in
                     if idx > 0 { Divider().background(Color.niHair) }
-                    ItemRow(session: s) { allow in store.decide(s, allow: allow) }
+                    ItemRow(session: s,
+                            onDecide: { allow in store.decide(s, allow: allow) },
+                            onJump: { store.jump(s) })
                 }
             }
         }
-        .frame(width: 520, alignment: .top)
+        .frame(width: 440, alignment: .top)
         .fixedSize(horizontal: false, vertical: true)
     }
 }
@@ -160,16 +164,12 @@ struct PanelView: View {
 struct QuotaHeader: View {
     @ObservedObject var store: AppStore
     var body: some View {
-        let n = store.notch
         HStack(spacing: 0) {
             leftGroup
-            Spacer(minLength: 12)
-            if n.hasNotch { Color.clear.frame(width: n.width); Spacer(minLength: 12) }  // 让出刘海
+            Spacer(minLength: 10)
             rightGroup
         }
-        .padding(.horizontal, 16)
-        .frame(minHeight: n.hasNotch ? n.height : 44)   // 顶栏至少和刘海等高，列表从刘海下方开始
-        .padding(.vertical, n.hasNotch ? 0 : 6)
+        .padding(.horizontal, 16).padding(.vertical, 10)
     }
 
     @ViewBuilder private var leftGroup: some View {
@@ -212,6 +212,8 @@ struct QuotaHeader: View {
 struct ItemRow: View {
     let session: Session
     var onDecide: (Bool) -> Void = { _ in }
+    var onJump: () -> Void = {}
+    @State private var hovering = false
     var body: some View {
         HStack(alignment: .top, spacing: 13) {
             // 左侧精灵簇（主 + 子 agent）
@@ -229,6 +231,10 @@ struct ItemRow: View {
                         .font(.system(size: 13).weight(.semibold)).foregroundColor(.niText)
                         .lineLimit(1).truncationMode(.tail)
                     Spacer(minLength: 6)
+                    if !session.terminal.isEmpty {
+                        Text(hovering ? "↩ \(session.terminal)" : session.terminal)
+                            .font(.system(size: 10)).foregroundColor(hovering ? .niTool : .niText3)
+                    }
                     ForEach(session.badges, id: \.self) { b in badge(b) }
                     agentBadge(session.agent)
                     Text(session.elapsedLabel).font(.system(size: 11)).foregroundColor(.niText3)
@@ -255,6 +261,10 @@ struct ItemRow: View {
             }
         }
         .padding(.horizontal, 16).padding(.vertical, 13)
+        .background(hovering ? Color.white.opacity(0.04) : Color.clear)
+        .contentShape(Rectangle())
+        .onHover { hovering = $0 }
+        .onTapGesture { onJump() }     // 点行跳转到对应终端（审批按钮各自独立响应）
     }
 
     @ViewBuilder private var activity: some View {
