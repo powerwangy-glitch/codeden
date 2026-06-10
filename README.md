@@ -55,8 +55,13 @@ Claude Code ──hooks──▶ bridge/notch-bridge.py ──追加──▶ ~/
 ## 下载安装
 
 最新版本见 [Releases](https://github.com/powerwangy-glitch/codeden/releases)：
-下载 `CodeDen-v0.1.3-mac.zip` → 解压 → 把 `NotchIsland.app` 拖进 `/Applications` → 打开 →
+下载 `CodeDen-v0.1.4-mac.zip` → 解压 → 把 `NotchIsland.app` 拖进 `/Applications` → 打开 →
 跟新人引导一键接入 Claude Code。（首次打开若被 Gatekeeper 拦：右键 → 打开。）
+
+## v0.1.4 更新
+
+- Claude Desktop 优先：点击 Claude Code 会话卡片会打开 `claude://claude.ai/resume?session=<cliSessionId>`，尽量回到对应桌面端会话。
+- 读取 Claude Desktop 本地 `claude-code-sessions` 元数据，卡片优先展示桌面端会话标题。
 
 ## v0.1.3 更新
 

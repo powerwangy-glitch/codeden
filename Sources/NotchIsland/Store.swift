@@ -170,6 +170,16 @@ final class AppStore: ObservableObject {
         if let b = e.term_bundle, !b.isEmpty { s.bundleID = b }
         if let tty = e.term_tty, !tty.isEmpty { s.tty = tty }
         if let c = e.cwd, !c.isEmpty { s.cwd = c }
+        if let meta = claudeDesktopMeta(for: e.session) {
+            if s.cwd.isEmpty { s.cwd = meta.cwd }
+            if s.project == "—" || s.project.isEmpty {
+                let project = URL(fileURLWithPath: meta.cwd).lastPathComponent
+                s.project = project.isEmpty ? "Claude" : project
+            }
+            if !meta.title.isEmpty, s.task.isEmpty {
+                s.task = String(meta.title.prefix(36))
+            }
+        }
         s.lastUpdate = Date()
 
         let prev = s.state
@@ -349,6 +359,10 @@ final class AppStore: ObservableObject {
             play(.select)
             return
         }
+        if session.agent == .claude, openClaudeDesktopSession(session) {
+            play(.select)
+            return
+        }
         if let tty = session.tty, jumpToTerminalTTY(session, tty: tty) {
             play(.select)
             return
@@ -365,6 +379,47 @@ final class AppStore: ObservableObject {
         }
         NSWorkspace.shared.open(url)
         return true
+    }
+
+    private func openClaudeDesktopSession(_ session: Session) -> Bool {
+        let desktopBundleID = "com.anthropic.claudefordesktop"
+        guard session.bundleID == desktopBundleID || NSWorkspace.shared.urlForApplication(withBundleIdentifier: desktopBundleID) != nil else {
+            return false
+        }
+        let allowed = CharacterSet(charactersIn: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-")
+        guard session.id.rangeOfCharacter(from: allowed.inverted) == nil,
+              let url = URL(string: "claude://claude.ai/resume?session=\(session.id)") else {
+            return false
+        }
+        NSWorkspace.shared.open(url)
+        return true
+    }
+
+    private func claudeDesktopMeta(for cliSessionID: String) -> (title: String, cwd: String)? {
+        guard cliSessionID.rangeOfCharacter(from: CharacterSet(charactersIn: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-").inverted) == nil else {
+            return nil
+        }
+        let base = home.appendingPathComponent("Library/Application Support/Claude/claude-code-sessions")
+        guard let enumerator = FileManager.default.enumerator(
+            at: base,
+            includingPropertiesForKeys: [.isRegularFileKey],
+            options: [.skipsHiddenFiles]
+        ) else { return nil }
+
+        for case let url as URL in enumerator {
+            guard url.lastPathComponent.hasPrefix("local_"), url.pathExtension == "json" else { continue }
+            guard let data = try? Data(contentsOf: url),
+                  let meta = try? JSONDecoder().decode(ClaudeDesktopSessionMeta.self, from: data),
+                  meta.cliSessionId == cliSessionID else { continue }
+            return (meta.title ?? "", meta.cwd)
+        }
+        return nil
+    }
+
+    private struct ClaudeDesktopSessionMeta: Decodable {
+        var cliSessionId: String?
+        var cwd: String
+        var title: String?
     }
 
     private func jumpToTerminalTTY(_ session: Session, tty: String) -> Bool {

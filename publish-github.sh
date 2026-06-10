@@ -7,7 +7,7 @@ cd "$(dirname "$0")"
 
 REPO="codeden"
 DESC="码岛 CodeDen — 把 MacBook 刘海变成 AI 编码助手的实时基地（像素风 + 审批回写 + 怪兽养成）"
-ZIP="dist/CodeDen-v0.1.3-mac.zip"   # 纯英文名（GitHub 资产名会丢掉中文字符）
+ZIP="dist/CodeDen-v0.1.4-mac.zip"   # 纯英文名（GitHub 资产名会丢掉中文字符）
 
 # 确认已登录
 gh auth status >/dev/null 2>&1 || { echo "❌ 还没登录。请先在终端运行： gh auth login"; exit 1; }
@@ -24,10 +24,10 @@ else
 fi
 
 # 发布 release + 上传安装包
-gh release view v0.1.3 >/dev/null 2>&1 || \
-  gh release create v0.1.3 "$ZIP" \
-    --title "码岛 CodeDen v0.1.3" \
-    --notes "v0.1.3：点击 Codex 会话卡片会打开对应 thread；Terminal / iTerm 中的 Claude Code 会话可按 TTY 尝试跳回对应 tab/session；Codex 并发任务会按 thread 分别显示并自动回落空闲。
+gh release view v0.1.4 >/dev/null 2>&1 || \
+  gh release create v0.1.4 "$ZIP" \
+    --title "码岛 CodeDen v0.1.4" \
+    --notes "v0.1.4：Claude Desktop 优先；点击 Claude Code 会话卡片会打开 claude://claude.ai/resume?session=<cliSessionId>，尽量回到对应桌面端会话；卡片会读取 Claude Desktop 本地会话标题。Codex 继续按 codex://threads/<thread-id> 跳转。
 
 安装：下载 zip → 解压 → 拖进 /Applications → 打开 → 跟引导一键接入 Claude Code。
 （直接下载的 .app 首次打开若被 Gatekeeper 拦，右键 → 打开。正式分发建议用 dist-notarize.sh 公证。）"
