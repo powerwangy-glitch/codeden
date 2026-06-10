@@ -53,6 +53,12 @@ struct IslandView: View {
             if store.sessions.count == 1 { store.jump(store.sessions[0]) }
             else { store.expanded = true }
         }
+        .contextMenu {
+            Button("设置…") { store.openSettings() }
+            Button("重看新人引导") { store.openOnboarding() }
+            Divider()
+            Button("退出 码岛") { NSApp.terminate(nil) }
+        }
     }
 }
 

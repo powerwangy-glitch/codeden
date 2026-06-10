@@ -92,7 +92,9 @@ struct SettingsView: View {
     @State private var hookStatus = ""
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 0) {
+          ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
             HStack(spacing: 10) {
                 Image(nsImage: Sprites.image(.claude)).interpolation(.none).resizable()
                     .frame(width: 28, height: 28)
@@ -172,14 +174,17 @@ struct SettingsView: View {
                 }.padding(8)
             }
 
-            Spacer()
-            HStack {
+            }
+            .padding(20)
+          }
+          Divider()
+          HStack {
                 Button("重看新人引导") { store.openOnboarding() }
                 Spacer()
                 Button("退出 码岛") { NSApp.terminate(nil) }
-            }
+          }
+          .padding(.horizontal, 20).padding(.vertical, 12)
         }
-        .padding(20)
         .frame(width: 400, height: 640)
     }
 }
