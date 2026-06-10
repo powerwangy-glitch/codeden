@@ -140,6 +140,13 @@ struct Session: Identifiable {
     var displaySubtitle: String {
         let cleanLine = line.text.trimmingCharacters(in: .whitespacesAndNewlines)
         let cleanUser = user.trimmingCharacters(in: .whitespacesAndNewlines)
+        if state == .idle {
+            if !cleanUser.isEmpty {
+                let firstLine = cleanUser.split(separator: "\n").first.map(String.init) ?? cleanUser
+                if !displayTitle.contains(firstLine.prefix(18)) { return "你：\(cleanUser)" }
+            }
+            return "已空闲"
+        }
         if !cleanLine.isEmpty && cleanLine != "正在运行" { return cleanLine }
         if !cleanUser.isEmpty {
             let firstLine = cleanUser.split(separator: "\n").first.map(String.init) ?? cleanUser

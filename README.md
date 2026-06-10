@@ -55,8 +55,13 @@ Claude Code ──hooks──▶ bridge/notch-bridge.py ──追加──▶ ~/
 ## 下载安装
 
 最新版本见 [Releases](https://github.com/powerwangy-glitch/codeden/releases)：
-下载 `CodeDen-v0.1.6-mac.zip` → 解压 → 把 `NotchIsland.app` 拖进 `/Applications` → 打开 →
+下载 `CodeDen-v0.1.7-mac.zip` → 解压 → 把 `NotchIsland.app` 拖进 `/Applications` → 打开 →
 跟新人引导一键接入 Claude Code。（首次打开若被 Gatekeeper 拦：右键 → 打开。）
+
+## v0.1.7 更新
+
+- 修复 Claude Desktop 历史会话已停止后，最近会话仍显示 `思考中...` 的问题。
+- Stop 没有 assistant 文本时会正确收尾为已完成，随后转为空闲态。
 
 ## v0.1.6 更新
 

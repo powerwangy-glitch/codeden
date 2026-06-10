@@ -263,7 +263,11 @@ final class AppStore: ObservableObject {
             s.questions = nil
             s.plan = nil
             if !suppressBuddyXP { buddies.record(agent, .completion) }
-            if let a = e.assistant, !a.isEmpty { s.line = .init(tool: nil, text: a) }
+            if let a = e.assistant, !a.isEmpty {
+                s.line = .init(tool: nil, text: a)
+            } else if s.line.text == "思考中…" || s.line.text.isEmpty {
+                s.line = .init(tool: nil, text: "已完成")
+            }
             schedulePrune(e.session)
 
         case "SubagentStop":
@@ -280,6 +284,7 @@ final class AppStore: ObservableObject {
 
         case "SessionStart":
             s.state = .idle
+            s.line = .init(tool: nil, text: "等待输入")
 
         case "SessionEnd":
             remove(e.session)
@@ -617,7 +622,15 @@ final class AppStore: ObservableObject {
         pruneTimers[id] = Timer.scheduledTimer(withTimeInterval: 20, repeats: false) { [weak self] _ in
             Task { @MainActor in
                 guard let self, var s = self.byID[id] else { return }
-                if s.state == .done { s.state = .idle; self.byID[id] = s; self.commit(); self.onChange() }
+                if s.state == .done {
+                    s.state = .idle
+                    if s.line.text == "已完成" || s.line.text == "思考中…" || s.line.text.isEmpty {
+                        s.line = .init(tool: nil, text: "已空闲")
+                    }
+                    self.byID[id] = s
+                    self.commit()
+                    self.onChange()
+                }
             }
         }
     }
