@@ -10,6 +10,8 @@ final class CodexActivityWatcher {
     private var timer: Timer?
     private var lastEmittedThread: String?
     private var lastEmitAt: Date = .distantPast
+    private let activeLookbackSeconds = 6
+    private let idleAfterSeconds: TimeInterval = 10
 
     init(onEvent: @escaping (IngestEvent) -> Void) {
         self.onEvent = onEvent
@@ -29,7 +31,13 @@ final class CodexActivityWatcher {
     }
 
     private func poll() {
-        guard let threadID = latestActiveThreadID() else { return }
+        guard let threadID = latestActiveThreadID() else {
+            markIdleIfStale()
+            return
+        }
+        if let previous = lastEmittedThread, previous != threadID {
+            emitIdle(previous)
+        }
         if threadID == lastEmittedThread, Date().timeIntervalSince(lastEmitAt) < 4 {
             return
         }
@@ -57,11 +65,36 @@ final class CodexActivityWatcher {
         let query = """
         select thread_id from logs
         where thread_id is not null
-          and ts > strftime('%s','now') - 8
+          and ts > strftime('%s','now') - \(activeLookbackSeconds)
+          and target in (
+            'codex_api::sse::responses',
+            'codex_api::endpoint::responses_websocket',
+            'codex_core::stream_events_utils'
+          )
         order by ts desc, ts_nanos desc
         limit 1;
         """
         return runSQLite(db, query).trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
+    }
+
+    private func markIdleIfStale() {
+        guard let threadID = lastEmittedThread,
+              Date().timeIntervalSince(lastEmitAt) >= idleAfterSeconds else { return }
+        emitIdle(threadID)
+        lastEmittedThread = nil
+        lastEmitAt = .distantPast
+    }
+
+    private func emitIdle(_ threadID: String) {
+        let meta = threadMeta(threadID)
+        let cwd = meta.cwd.isEmpty ? FileManager.default.currentDirectoryPath : meta.cwd
+        let project = URL(fileURLWithPath: cwd).lastPathComponent
+        onEvent(.init(session: "codex-\(threadID)",
+                      agent: "codex",
+                      project: project.isEmpty ? "Codex" : project,
+                      cwd: cwd,
+                      event: "Notification",
+                      message: "Codex 空闲"))
     }
 
     private func threadMeta(_ id: String) -> (title: String, cwd: String, preview: String) {

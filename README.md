@@ -55,8 +55,12 @@ Claude Code ──hooks──▶ bridge/notch-bridge.py ──追加──▶ ~/
 ## 下载安装
 
 最新版本见 [Releases](https://github.com/powerwangy-glitch/codeden/releases)：
-下载 `CodeDen-v0.1.1-mac.zip` → 解压 → 把 `NotchIsland.app` 拖进 `/Applications` → 打开 →
+下载 `CodeDen-v0.1.2-mac.zip` → 解压 → 把 `NotchIsland.app` 拖进 `/Applications` → 打开 →
 跟新人引导一键接入 Claude Code。（首次打开若被 Gatekeeper 拦：右键 → 打开。）
+
+## v0.1.2 更新
+
+- 修复 Codex 运行中探测卡住的问题：没有 streaming 活动后会自动退回空闲，不再一直显示正在跑。
 
 ## v0.1.1 更新
 
