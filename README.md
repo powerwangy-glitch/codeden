@@ -67,6 +67,7 @@ Claude Code ──hooks──▶ bridge/notch-bridge.py ──追加──▶ ~/
 - 修复 Claude Code 审批回写安装命令吞 stdout 的问题，刘海里的允许 / 拒绝能正确回传。
 - 打包补齐 statusLine 与 Codex notify 桥接脚本，正式 .app 一键安装更完整。
 - Codex notify 过滤内部标题生成事件，并清理链式 notify 自引用，减少无意义卡片。
+- Codex Desktop 增加运行中探测：即使 notify 只在 turn 完成时触发，刘海也能更及时显示正在运行。
 
 ## 构建 & 运行
 

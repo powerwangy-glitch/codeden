@@ -8,6 +8,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     var settings: SettingsController!
     var onboarding: OnboardingController!
     var tailer: EventTailer!
+    var codexWatcher: CodexActivityWatcher!
     var quotaTimer: Timer?
 
     static var eventsURL: URL {
@@ -47,6 +48,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             MainActor.assumeIsolated { self.store.ingest(event) }
         }
         tailer.start()
+
+        codexWatcher = CodexActivityWatcher { event in
+            self.store.ingest(event)
+        }
+        codexWatcher.start()
 
         // 仅首次体验（未完成引导）时载入演示数据；日常使用空着就显示「都在休息」
         if OnboardingController.shouldShow {
