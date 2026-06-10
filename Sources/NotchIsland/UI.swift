@@ -99,10 +99,10 @@ struct PillView: View {
             // 横跨刘海：左翼放精灵、右翼放状态，中间让出刘海宽度（内容全在刘海外）
             HStack(spacing: 0) {
                 leftWing.frame(width: NotchLayout.wing, alignment: .trailing)
-                    .padding(.trailing, 6)
+                    .padding(.trailing, 3)
                 Color.clear.frame(width: n.width)
                 rightWing.frame(width: NotchLayout.wing, alignment: .leading)
-                    .padding(.leading, 6)
+                    .padding(.leading, 3)
             }
             .frame(height: n.height)            // 与刘海等高，齐平不突出
         } else {
@@ -156,21 +156,25 @@ struct PanelView: View {
             if store.notch.hasNotch { Color.clear.frame(height: store.notch.height) }
             QuotaHeader(store: store)
             if store.sessions.isEmpty {
-                VStack(spacing: 8) {
-                    Text("z z Z").font(.system(size: 11, design: .monospaced)).foregroundColor(.niText3)
+                VStack(spacing: 9) {
+                    SpriteView(agent: .claude, size: 30, sleeping: true)
+                    Text("z z Z").font(.system(size: 10, design: .monospaced)).foregroundColor(.niText3)
                     Text("没有正在运行的 agent").font(.system(size: 12)).foregroundColor(.niText3)
-                }.padding(.vertical, 18).frame(maxWidth: .infinity)
+                }.padding(.vertical, 22).frame(maxWidth: .infinity)
             } else {
-                ForEach(Array(store.sessions.enumerated()), id: \.element.id) { idx, s in
-                    ItemRow(session: s,
-                            onDecide: { allow in store.decide(s, allow: allow) },
-                            onJump: { store.jump(s) },
-                            onHide: { store.hideSession(s) },
-                            onBlockDir: { store.blockDir(s) },
-                            onAnswer: { i in store.answer(s, option: i) })
+                VStack(spacing: 6) {
+                    ForEach(Array(store.sessions.enumerated()), id: \.element.id) { idx, s in
+                        ItemRow(session: s,
+                                onDecide: { allow in store.decide(s, allow: allow) },
+                                onJump: { store.jump(s) },
+                                onHide: { store.hideSession(s) },
+                                onBlockDir: { store.blockDir(s) },
+                                onAnswer: { i in store.answer(s, option: i) })
+                    }
                 }
+                .padding(.horizontal, 8)
             }
-            Color.clear.frame(height: 6)
+            Color.clear.frame(height: 8)
         }
         .frame(width: CGFloat(store.panelWidth), alignment: .top)
         .fixedSize(horizontal: false, vertical: true)
@@ -339,8 +343,9 @@ struct ItemRow: View {
                 }
             }
         }
-        .padding(.horizontal, 16).padding(.vertical, 14)
-        .background(RoundedRectangle(cornerRadius: 12).fill(hovering ? Color.white.opacity(0.05) : Color.clear).padding(.horizontal, 6))
+        .padding(.horizontal, 13).padding(.vertical, 12)
+        .background(RoundedRectangle(cornerRadius: 13, style: .continuous)
+            .fill(Color.white.opacity(hovering ? 0.065 : 0.035)))
         .contentShape(Rectangle())
         .onHover { hovering = $0 }
         .onTapGesture { onJump() }     // 点行跳转到对应终端（审批按钮各自独立响应）

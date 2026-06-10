@@ -32,6 +32,6 @@ struct NotchMetrics: Equatable {
 
 /// 收起态翼区宽度（刘海两侧各放内容的固定宽）。
 enum NotchLayout {
-    static let wing: CGFloat = 44             // 刘海两侧翼区：仅一个图标/一个字符，克制
+    static let wing: CGFloat = 34             // 刘海两侧翼区：仅一个图标/一个字符，克制
     static let fallbackHeight: CGFloat = 32   // 无刘海时收起态高
 }
