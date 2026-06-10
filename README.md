@@ -55,8 +55,13 @@ Claude Code ──hooks──▶ bridge/notch-bridge.py ──追加──▶ ~/
 ## 下载安装
 
 最新版本见 [Releases](https://github.com/powerwangy-glitch/codeden/releases)：
-下载 `CodeDen-v0.1.5-mac.zip` → 解压 → 把 `NotchIsland.app` 拖进 `/Applications` → 打开 →
+下载 `CodeDen-v0.1.6-mac.zip` → 解压 → 把 `NotchIsland.app` 拖进 `/Applications` → 打开 →
 跟新人引导一键接入 Claude Code。（首次打开若被 Gatekeeper 拦：右键 → 打开。）
+
+## v0.1.6 更新
+
+- 修复部分 Codex Desktop 任务运行中但卡片只显示 `Codex` 的问题：模型请求阶段也会被识别为活跃任务。
+- Codex 活跃判断扩大到 `codex_client::request` / `hyper_util` 网络请求，像“能合盖么”这类任务能更早显示标题。
 
 ## v0.1.5 更新
 

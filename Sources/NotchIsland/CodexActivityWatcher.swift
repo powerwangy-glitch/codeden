@@ -10,8 +10,8 @@ final class CodexActivityWatcher {
     private var timer: Timer?
     private var activeThreads: [String: Date] = [:]
     private var lastRunningEmitAt: [String: Date] = [:]
-    private let activeLookbackSeconds = 6
-    private let idleAfterSeconds: TimeInterval = 10
+    private let activeLookbackSeconds = 12
+    private let idleAfterSeconds: TimeInterval = 16
 
     init(onEvent: @escaping (IngestEvent) -> Void) {
         self.onEvent = onEvent
@@ -51,7 +51,7 @@ final class CodexActivityWatcher {
         let meta = threadMeta(threadID)
         let cwd = meta.cwd.isEmpty ? FileManager.default.currentDirectoryPath : meta.cwd
         let project = URL(fileURLWithPath: cwd).lastPathComponent
-        let title = meta.title.isEmpty ? "Codex" : meta.title
+        let title = cleanedTitle(meta.title, fallback: meta.preview)
         let prompt = meta.preview.isEmpty ? title : meta.preview
         onEvent(.init(session: "codex-\(threadID)",
                       agent: "codex",
@@ -73,7 +73,11 @@ final class CodexActivityWatcher {
           and target in (
             'codex_api::sse::responses',
             'codex_api::endpoint::responses_websocket',
-            'codex_core::stream_events_utils'
+            'codex_core::stream_events_utils',
+            'codex_client::request',
+            'hyper_util::client::legacy::client',
+            'hyper_util::client::legacy::pool',
+            'hyper_util::client::legacy::connect::http'
           )
         group by thread_id
         order by max(ts) desc, max(ts_nanos) desc
@@ -114,21 +118,40 @@ final class CodexActivityWatcher {
         guard FileManager.default.fileExists(atPath: db) else { return ("Codex", "", "") }
         let safeID = id.replacingOccurrences(of: "'", with: "''")
         let query = """
-        select coalesce(title,'') || char(31) || coalesce(cwd,'') || char(31) || substr(coalesce(preview,''), 1, 180)
+        select coalesce(title,'') as title, coalesce(cwd,'') as cwd, substr(coalesce(preview,''), 1, 180) as preview
         from threads where id = '\(safeID)' limit 1;
         """
-        let parts = runSQLite(db, query)
-            .trimmingCharacters(in: .newlines)
-            .split(separator: Character(UnicodeScalar(31)), omittingEmptySubsequences: false)
-            .map(String.init)
-        guard parts.count >= 3 else { return ("Codex", "", "") }
-        return (parts[0], parts[1], parts[2])
+        guard let meta = decodeCodexMeta(runSQLite(db, query, json: true)) else { return ("Codex", "", "") }
+        return (meta.title, meta.cwd, meta.preview)
     }
 
-    private func runSQLite(_ db: String, _ query: String) -> String {
+    private func decodeCodexMeta(_ json: String) -> CodexThreadMeta? {
+        guard let data = json.data(using: .utf8),
+              let rows = try? JSONDecoder().decode([CodexThreadMeta].self, from: data) else { return nil }
+        return rows.first
+    }
+
+    private struct CodexThreadMeta: Decodable {
+        var title: String
+        var cwd: String
+        var preview: String
+    }
+
+    private func cleanedTitle(_ title: String, fallback: String) -> String {
+        for source in [title, fallback] {
+            for rawLine in source.split(separator: "\n") {
+                let line = rawLine.trimmingCharacters(in: .whitespacesAndNewlines)
+                if line.isEmpty || line.hasPrefix("http://") || line.hasPrefix("https://") { continue }
+                return line
+            }
+        }
+        return "Codex"
+    }
+
+    private func runSQLite(_ db: String, _ query: String, json: Bool = false) -> String {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/sqlite3")
-        process.arguments = [db, query]
+        process.arguments = json ? ["-json", db, query] : [db, query]
         let pipe = Pipe()
         process.standardOutput = pipe
         process.standardError = Pipe()
