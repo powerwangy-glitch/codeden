@@ -68,6 +68,17 @@ final class AppStore: ObservableObject {
     /// onChange 在状态变化后调用（用于刘海窗口尺寸/动画刷新与声音）。
     init(onChange: @escaping () -> Void = {}) {
         self.onChange = onChange
+        // 心跳：刷新「Xm 前」时间标签；清理 30 分钟无活动的空闲会话
+        Timer.scheduledTimer(withTimeInterval: 30, repeats: true) { [weak self] _ in
+            Task { @MainActor in self?.tick() }
+        }
+    }
+
+    private func tick() {
+        let stale = byID.values.filter { $0.state == .idle && Date().timeIntervalSince($0.lastUpdate) > 1800 }
+        for s in stale { remove(s.id) }
+        commit()          // 重发 sessions → elapsedLabel 重算
+        if !stale.isEmpty { onChange() }
     }
 
     // MARK: - 事件消费（状态机核心）
@@ -76,7 +87,7 @@ final class AppStore: ObservableObject {
         let agent = AgentKind.from(e.agent)
         var s = byID[e.session] ?? Session(
             id: e.session, agent: agent,
-            project: e.project ?? "—", task: e.project ?? "会话",
+            project: e.project ?? "—", task: "",
             state: .running, user: "", line: .init(tool: nil, text: ""),
             badges: [], lastUpdate: Date(), subagents: 0
         )
@@ -91,7 +102,14 @@ final class AppStore: ObservableObject {
         switch e.event {
         case "UserPromptSubmit":
             s.state = .running
-            if let u = e.user, !u.isEmpty { s.user = u }
+            if let u = e.user, !u.isEmpty {
+                s.user = u
+                // 会话标题 = 首条 prompt 摘要（避免「项目 · 项目」重复）
+                if s.task.isEmpty {
+                    let firstLine = u.split(separator: "\n").first.map(String.init) ?? u
+                    s.task = String(firstLine.prefix(24))
+                }
+            }
             s.line = .init(tool: nil, text: "思考中…")
 
         case "PreToolUse":
@@ -113,11 +131,9 @@ final class AppStore: ObservableObject {
         case "Notification":
             // 权限请求 or 空闲等待，靠文本判断
             let msg = (e.message ?? "").lowercased()
-            if msg.contains("permission") || msg.contains("approve") || msg.contains("waiting for your") {
-                s.state = .waiting
-            } else {
-                s.state = .idle
-            }
+            let waitWords = ["permission", "approve", "waiting for your", "needs your",
+                             "权限", "批准", "审批", "等待你", "等待您", "需要你", "需要您"]
+            s.state = waitWords.contains(where: { msg.contains($0) }) ? .waiting : .idle
             if let m = e.message { s.line = .init(tool: nil, text: m) }
 
         case "Stop":
@@ -149,7 +165,6 @@ final class AppStore: ObservableObject {
 
         // 用 user/assistant 字段补全（任何事件都可能带）
         if let u = e.user, !u.isEmpty { s.user = u }
-        if s.task == "会话" || s.task.isEmpty { s.task = s.project }
 
         byID[e.session] = s
         commit()

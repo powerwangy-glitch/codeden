@@ -238,7 +238,7 @@ struct ItemRow: View {
             VStack(alignment: .leading, spacing: 6) {
                 // 第一行：标题 + 标签 + 时间
                 HStack(spacing: 8) {
-                    Text("\(session.project) · \(session.task)")
+                    Text(session.task.isEmpty ? session.project : "\(session.project) · \(session.task)")
                         .font(.system(size: 13).weight(.semibold)).foregroundColor(.niText)
                         .lineLimit(1).truncationMode(.tail)
                     Spacer(minLength: 6)

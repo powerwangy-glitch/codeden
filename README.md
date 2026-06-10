@@ -139,7 +139,8 @@ bridge 读到 → 输出 hookSpecificOutput.decision JSON → exit 0 → Claude 
 - ✅ 打包成 .app（LSUIElement）+ 开机自启（SMAppService）+ 设置页（含一键装/卸 Hook）
 - ✅ 像素 App 图标（make-icon.swift → AppIcon.icns）+ 改名「码岛 CodeDen」
 - ✅ 养成系统：怪兽升级/进化/伙伴图鉴（持久化 UserDefaults）
-- ⏳ 多 agent 桥接（Codex/Gemini/Cursor 各自的 hook/日志接入）
+- ✅ Codex 接入（实验性）：`python3 bridge/install.py --codex` 写入 notify 钩子，turn 完成时绿怪兽冒泡
+- ⏳ Gemini/Cursor 桥接
 - ⏳ 终端 Jump（按 cwd + AppleScript 跳回对应终端 tab）
 - ⏳ AskUserQuestion 选项回写（提问的数字选项点选回传）
 - ⏳ 公证发布（dist-notarize.sh，需你的 Developer ID）

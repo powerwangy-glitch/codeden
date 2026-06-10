@@ -70,6 +70,33 @@ PREV={json.dumps(prev)}
     data["statusLine"] = {"type": "command", "command": sh_dst}
 
 
+def setup_codex():
+    """实验性：把 notify 钩子写入 ~/.codex/config.toml（已有 notify 则跳过，不覆盖）。"""
+    cfg = os.path.join(HOME, ".codex", "config.toml")
+    if not os.path.isdir(os.path.dirname(cfg)):
+        print("未发现 ~/.codex，跳过 Codex 接入")
+        return
+    src = os.path.join(os.path.dirname(__file__), "notch-codex-notify.py")
+    dst = os.path.join(BIN_DIR, "notch-codex-notify.py")
+    if os.path.exists(src) and os.path.abspath(src) != os.path.abspath(dst):
+        shutil.copy2(src, dst)
+    os.chmod(dst, 0o755)
+    body = ""
+    if os.path.exists(cfg):
+        with open(cfg) as f:
+            body = f.read()
+    if "notch-codex-notify" in body:
+        print("Codex notify 已安装，跳过")
+        return
+    if "\nnotify" in body or body.startswith("notify"):
+        print("⚠️ ~/.codex/config.toml 已有其他 notify（可能是 Vibe Island），不覆盖，跳过 Codex 接入")
+        return
+    shutil.copy2(cfg, cfg + ".notch-backup") if os.path.exists(cfg) else None
+    with open(cfg, "a") as f:
+        f.write('\n# NotchIsland (码岛) Codex 桥接\nnotify = ["python3", "%s"]\n' % dst)
+    print("已安装 Codex notify 桥接（备份: config.toml.notch-backup）")
+
+
 def main():
     # 把桥接脚本复制到稳定路径
     os.makedirs(BIN_DIR, exist_ok=True)
@@ -111,6 +138,8 @@ def main():
     os.makedirs(os.path.join(HOME, ".notch-island"), exist_ok=True)
     print("已安装 NotchIsland hook：新增 %d 个事件钩子" % added)
     print("已安装额度采集 statusLine（链式保留原有 statusLine）")
+    if "--codex" in sys.argv:
+        setup_codex()
     print("脚本路径：", SCRIPT)
     print("重启正在进行的 Claude Code 会话后生效（新会话自动生效）。")
 

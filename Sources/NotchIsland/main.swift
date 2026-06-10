@@ -47,12 +47,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         tailer.start()
 
-        // 若一段时间内没有任何真实会话，载入演示数据以便预览
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
-            guard let self else { return }
-            if self.store.sessions.isEmpty {
-                self.store.loadDemo()
-                self.controller.show()
+        // 仅首次体验（未完成引导）时载入演示数据；日常使用空着就显示「都在休息」
+        if OnboardingController.shouldShow {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
+                guard let self else { return }
+                if self.store.sessions.isEmpty {
+                    self.store.loadDemo()
+                    self.controller.show()
+                }
             }
         }
     }
