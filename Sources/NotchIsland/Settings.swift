@@ -105,10 +105,49 @@ struct SettingsView: View {
             GroupBox("通用") {
                 VStack(alignment: .leading, spacing: 10) {
                     Toggle("开机自启", isOn: $store.launchAtLogin)
-                    Toggle("提示音（芯片电音）", isOn: $store.soundEnabled)
                     Toggle("显示额度", isOn: $store.showQuota)
                     Toggle("需要审批时自动展开", isOn: $store.autoExpandOnWaiting)
+                    HStack {
+                        Text("面板宽度 \(Int(store.panelWidth))")
+                        Slider(value: $store.panelWidth, in: 380...560, step: 20)
+                    }
+                    HStack {
+                        Text(store.hoverDelay <= 0.01 ? "悬停立即展开" : String(format: "悬停延迟 %.1fs", store.hoverDelay))
+                        Slider(value: $store.hoverDelay, in: 0...1.5, step: 0.1)
+                    }
                 }.padding(8)
+            }
+
+            GroupBox("声音") {
+                VStack(alignment: .leading, spacing: 10) {
+                    Toggle("提示音（芯片电音）", isOn: $store.soundEnabled)
+                    Toggle("夜间静音时段", isOn: $store.quietHoursEnabled)
+                    if store.quietHoursEnabled {
+                        HStack(spacing: 8) {
+                            Picker("从", selection: $store.quietStart) {
+                                ForEach(0..<24, id: \.self) { Text("\($0):00").tag($0) }
+                            }.frame(width: 110)
+                            Picker("到", selection: $store.quietEnd) {
+                                ForEach(0..<24, id: \.self) { Text("\($0):00").tag($0) }
+                            }.frame(width: 110)
+                            if store.inQuietHours {
+                                Text("· 静音中").font(.caption).foregroundStyle(.orange)
+                            }
+                        }
+                        Text("结束早于开始则跨午夜。适合 Agent 夜间挂机时防打扰。")
+                            .font(.caption2).foregroundStyle(.tertiary)
+                    }
+                }.padding(8)
+            }
+
+            if !store.blockedDirs.isEmpty {
+                GroupBox("会话过滤") {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("已屏蔽 \(store.blockedDirs.count) 个项目目录（右键会话行可添加）")
+                            .font(.caption).foregroundStyle(.secondary)
+                        Button("清空过滤规则") { store.clearBlockedDirs() }
+                    }.padding(8)
+                }
             }
 
             GroupBox("伙伴图鉴") {

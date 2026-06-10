@@ -31,26 +31,31 @@ enum AgentKind: String, Codable, CaseIterable {
 /// 一个会话当前的状态，由事件驱动。
 enum SessionState: String {
     case running     // 正在跑工具 / 思考
+    case compacting  // 压缩上下文中
     case waiting     // 需要你：权限审批 或 提问
     case done        // 刚完成一轮（短暂）
     case idle        // 等待你输入
 
     var label: String {
         switch self {
-        case .running: return "运行中"
-        case .waiting: return "需要你处理"
-        case .done:    return "已完成"
-        case .idle:    return "空闲"
+        case .running:    return "运行中"
+        case .compacting: return "压缩中"
+        case .waiting:    return "需要你处理"
+        case .done:       return "已完成"
+        case .idle:       return "等待输入"
         }
     }
     var dotColor: Color {
         switch self {
-        case .running: return Color(red: 0x5E/255, green: 0x9E/255, blue: 1.0)
-        case .waiting: return Color(red: 1.0, green: 0xB3/255, blue: 0x40/255)
-        case .done:    return Color(red: 0x5F/255, green: 0xD4/255, blue: 0x7F/255)
-        case .idle:    return Color(white: 0.42)
+        case .running:    return Color(red: 0x5E/255, green: 0x9E/255, blue: 1.0)
+        case .compacting: return Color(red: 0xC0/255, green: 0x8B/255, blue: 1.0)
+        case .waiting:    return Color(red: 1.0, green: 0xB3/255, blue: 0x40/255)
+        case .done:       return Color(red: 0x5F/255, green: 0xD4/255, blue: 0x7F/255)
+        case .idle:       return Color(white: 0.42)
         }
     }
+    /// 算「忙」的状态（收起态归入运行）
+    var isBusy: Bool { self == .running || self == .compacting }
 }
 
 /// 归一化事件：bridge 写入 events.jsonl 的每一行。
@@ -87,6 +92,7 @@ struct Session: Identifiable {
     var requestID: String? = nil      // 非空 = 正在等你审批（可回写决定）
     var terminal: String = ""         // 终端显示名
     var bundleID: String? = nil       // 终端 bundle id（点击跳转）
+    var cwd: String = ""              // 工作目录（会话过滤用）
 
     struct ActivityLine {
         var tool: String?             // 上色的工具名，如 "Bash"

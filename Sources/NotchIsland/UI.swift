@@ -18,6 +18,7 @@ extension Color {
 
 struct IslandView: View {
     @ObservedObject var store: AppStore
+    @State private var hoverWork: DispatchWorkItem?
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -34,8 +35,17 @@ struct IslandView: View {
         .clipShape(RoundedCorners(radius: store.expanded ? 22 : 18))
         .contentShape(Rectangle())
         .onHover { inside in
-            if inside { store.expanded = true }
-            else if !store.sessions.contains(where: { $0.state == .waiting }) { store.expanded = false }
+            hoverWork?.cancel()
+            if inside {
+                if store.hoverDelay <= 0.01 { store.expanded = true }
+                else {
+                    let w = DispatchWorkItem { store.expanded = true }
+                    hoverWork = w
+                    DispatchQueue.main.asyncAfter(deadline: .now() + store.hoverDelay, execute: w)
+                }
+            } else if !store.sessions.contains(where: { $0.state == .waiting }) {
+                store.expanded = false
+            }
         }
         .onTapGesture {
             // 收起态点击：只有一个会话直接跳转，多个则展开
@@ -106,7 +116,7 @@ struct PillView: View {
                 Text("z z Z").font(.system(size: 9, design: .monospaced)).foregroundColor(.niText3)
             } else {
                 ForEach(Array(store.sessions.prefix(3))) { s in
-                    SpriteView(agent: s.agent, size: 18, running: s.state == .running)
+                    SpriteView(agent: s.agent, size: 18, running: s.state.isBusy)
                 }
                 if store.sessions.count > 3 {
                     Text("+\(store.sessions.count - 3)").font(.system(size: 10)).foregroundColor(.niText3)
@@ -158,11 +168,13 @@ struct PanelView: View {
                     if idx > 0 { Divider().background(Color.niHair) }
                     ItemRow(session: s,
                             onDecide: { allow in store.decide(s, allow: allow) },
-                            onJump: { store.jump(s) })
+                            onJump: { store.jump(s) },
+                            onHide: { store.hideSession(s) },
+                            onBlockDir: { store.blockDir(s) })
                 }
             }
         }
-        .frame(width: 440, alignment: .top)
+        .frame(width: CGFloat(store.panelWidth), alignment: .top)
         .fixedSize(horizontal: false, vertical: true)
     }
 }
@@ -224,13 +236,15 @@ struct ItemRow: View {
     let session: Session
     var onDecide: (Bool) -> Void = { _ in }
     var onJump: () -> Void = {}
+    var onHide: () -> Void = {}
+    var onBlockDir: () -> Void = {}
     @State private var hovering = false
     var body: some View {
         HStack(alignment: .top, spacing: 13) {
             // 左侧精灵簇（主 + 子 agent）
             HStack(spacing: 2) {
                 ForEach(0...session.subagents, id: \.self) { _ in
-                    SpriteView(agent: session.agent, size: 17, running: session.state == .running)
+                    SpriteView(agent: session.agent, size: 17, running: session.state.isBusy)
                 }
             }
             .frame(width: 40, alignment: .leading)
@@ -276,6 +290,10 @@ struct ItemRow: View {
         .contentShape(Rectangle())
         .onHover { hovering = $0 }
         .onTapGesture { onJump() }     // 点行跳转到对应终端（审批按钮各自独立响应）
+        .contextMenu {
+            Button("隐藏此会话") { onHide() }
+            Button("屏蔽此项目目录") { onBlockDir() }
+        }
     }
 
     @ViewBuilder private var activity: some View {

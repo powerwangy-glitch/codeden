@@ -20,7 +20,7 @@ MARKER = "notch-bridge.py"
 # 有 matcher 的工具类事件 vs 无 matcher 的生命周期事件
 TOOL_EVENTS = ["PreToolUse", "PostToolUse", "PermissionRequest", "Notification"]
 LIFE_EVENTS = ["UserPromptSubmit", "Stop", "SubagentStart", "SubagentStop",
-               "SessionStart", "SessionEnd"]
+               "SessionStart", "SessionEnd", "PreCompact"]
 
 COMMAND = "/bin/sh -c '/usr/bin/env python3 \"%s\" >/dev/null 2>&1; exit 0'" % SCRIPT
 

@@ -30,12 +30,34 @@ final class OnboardingController {
     }
 }
 
+/// 环境扫描：检测已装的 AI CLI 和终端/IDE。
+enum EnvDetect {
+    struct Item { let name: String; let found: Bool }
+    static func scan() -> [Item] {
+        let home = FileManager.default.homeDirectoryForCurrentUser.path
+        let fm = FileManager.default
+        func dir(_ p: String) -> Bool { fm.fileExists(atPath: p) }
+        func app(_ n: String) -> Bool { dir("/Applications/\(n).app") || dir("\(home)/Applications/\(n).app") }
+        var out: [Item] = [
+            Item(name: "Claude Code", found: dir("\(home)/.claude")),
+            Item(name: "Codex CLI",   found: dir("\(home)/.codex")),
+            Item(name: "Gemini CLI",  found: dir("\(home)/.gemini")),
+        ]
+        let terms: [(String, String)] = [("iTerm2","iTerm"), ("Warp","Warp"), ("Ghostty","Ghostty"),
+                                          ("kitty","kitty"), ("VS Code","Visual Studio Code"), ("Cursor","Cursor")]
+        let found = terms.filter { app($0.1) }.map(\.0)
+        out.append(Item(name: found.isEmpty ? "终端 & IDE" : "终端 & IDE（\(found.joined(separator: " · "))）",
+                        found: !found.isEmpty || dir("/System/Applications/Utilities/Terminal.app")))
+        return out
+    }
+}
+
 struct OnboardingView: View {
     @ObservedObject var store: AppStore
     var onFinish: () -> Void
     @State private var step = 0
     @State private var hookStatus = ""
-    private let total = 4
+    private let total = 5
 
     var body: some View {
         VStack(spacing: 0) {
@@ -67,10 +89,35 @@ struct OnboardingView: View {
     @ViewBuilder private var content: some View {
         switch step {
         case 0: welcome
-        case 1: features
-        case 2: connect
+        case 1: environment
+        case 2: features
+        case 3: connect
         default: ready
         }
+    }
+
+    // 步骤 2：环境检测（已检测 ✓ 即信任感）
+    private var environment: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("你的环境").font(.title2.bold())
+            Text("码岛扫描了这台 Mac，以下工具可以直接接入：")
+                .font(.callout).foregroundStyle(.secondary)
+            ForEach(EnvDetect.scan(), id: \.name) { item in
+                HStack(spacing: 10) {
+                    Text(item.found ? "✓" : "—")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(item.found ? Color.green : Color.secondary.opacity(0.5))
+                        .frame(width: 18)
+                    Text(item.name).font(.system(size: 13))
+                    Spacer()
+                    Text(item.found ? "已检测" : "未发现")
+                        .font(.caption).foregroundStyle(item.found ? Color.green : Color.secondary.opacity(0.5))
+                }
+                .padding(.vertical, 2)
+            }
+            Text("零配置 — 下一步一键接入，无需手动改任何文件。")
+                .font(.caption).foregroundStyle(.tertiary).padding(.top, 4)
+        }.frame(maxWidth: .infinity, alignment: .leading)
     }
 
     // 步骤 1：欢迎

@@ -26,6 +26,40 @@ final class AppStore: ObservableObject {
     @Published var autoExpandOnWaiting: Bool = (d.object(forKey: "autoExpandOnWaiting") as? Bool) ?? true {
         didSet { Self.d.set(autoExpandOnWaiting, forKey: "autoExpandOnWaiting") }
     }
+    /// 夜间静音时段（小时制，跨午夜支持，如 23→8）
+    @Published var quietHoursEnabled: Bool = (d.object(forKey: "quietHoursEnabled") as? Bool) ?? false {
+        didSet { Self.d.set(quietHoursEnabled, forKey: "quietHoursEnabled") }
+    }
+    @Published var quietStart: Int = (d.object(forKey: "quietStart") as? Int) ?? 23 {
+        didSet { Self.d.set(quietStart, forKey: "quietStart") }
+    }
+    @Published var quietEnd: Int = (d.object(forKey: "quietEnd") as? Int) ?? 8 {
+        didSet { Self.d.set(quietEnd, forKey: "quietEnd") }
+    }
+    /// 展开面板宽度 / 悬停展开延迟
+    @Published var panelWidth: Double = (d.object(forKey: "panelWidth") as? Double) ?? 440 {
+        didSet { Self.d.set(panelWidth, forKey: "panelWidth") }
+    }
+    @Published var hoverDelay: Double = (d.object(forKey: "hoverDelay") as? Double) ?? 0 {
+        didSet { Self.d.set(hoverDelay, forKey: "hoverDelay") }
+    }
+    /// 会话过滤：被屏蔽的目录片段（持久）+ 本次隐藏的会话（临时）
+    @Published var blockedDirs: [String] = (d.object(forKey: "blockedDirs") as? [String]) ?? [] {
+        didSet { Self.d.set(blockedDirs, forKey: "blockedDirs"); commit() }
+    }
+    private var hiddenSessionIDs: Set<String> = []
+
+    /// 当前是否处于静音时段
+    var inQuietHours: Bool {
+        guard quietHoursEnabled else { return false }
+        let h = Calendar.current.component(.hour, from: Date())
+        return quietStart <= quietEnd ? (h >= quietStart && h < quietEnd)
+                                      : (h >= quietStart || h < quietEnd)   // 跨午夜
+    }
+    /// 统一出声入口：总开关 + 静音时段
+    func play(_ cue: Chiptune.Cue) {
+        Chiptune.shared.play(cue, enabled: soundEnabled && !inQuietHours)
+    }
     @Published var launchAtLogin: Bool = (SMAppService.mainApp.status == .enabled) {
         didSet { applyLoginItem() }
     }
@@ -52,11 +86,11 @@ final class AppStore: ObservableObject {
     enum PillState { case rest, running, waiting, done }
     var pillState: PillState {
         if sessions.contains(where: { $0.state == .waiting }) { return .waiting }
-        if sessions.contains(where: { $0.state == .running }) { return .running }
+        if sessions.contains(where: { $0.state.isBusy }) { return .running }
         if sessions.contains(where: { $0.state == .done }) { return .done }
         return .rest
     }
-    var runningCount: Int { sessions.filter { $0.state == .running }.count }
+    var runningCount: Int { sessions.filter { $0.state.isBusy }.count }
     var anyQuotaDanger: Bool { quotas.contains { $0.danger } }
 
     private var byID: [String: Session] = [:]
@@ -96,6 +130,7 @@ final class AppStore: ObservableObject {
         if let sub = e.subagents { s.subagents = max(0, sub) }
         if let t = e.term, !t.isEmpty { s.terminal = t }
         if let b = e.term_bundle, !b.isEmpty { s.bundleID = b }
+        if let c = e.cwd, !c.isEmpty { s.cwd = c }
         s.lastUpdate = Date()
 
         let prev = s.state
@@ -151,6 +186,10 @@ final class AppStore: ObservableObject {
             s.state = .running
             s.subagents += 1
 
+        case "PreCompact":
+            s.state = .compacting
+            s.line = .init(tool: nil, text: "压缩上下文…")
+
         case "SessionStart":
             s.state = .idle
 
@@ -173,14 +212,24 @@ final class AppStore: ObservableObject {
         if prev != s.state {
             switch s.state {
             case .waiting:
-                Chiptune.shared.play(.alert, enabled: soundEnabled)
+                play(.alert)
                 if autoExpandOnWaiting { expanded = true }
-            case .done:    Chiptune.shared.play(.done, enabled: soundEnabled)
+            case .done:    play(.done)
             default: break
             }
         }
         onChange()
     }
+
+    // MARK: - 会话过滤
+
+    func hideSession(_ s: Session) { hiddenSessionIDs.insert(s.id); commit(); onChange() }
+    func blockDir(_ s: Session) {
+        guard !s.cwd.isEmpty, !blockedDirs.contains(s.cwd) else { return }
+        blockedDirs.append(s.cwd)   // didSet 自动 commit
+        onChange()
+    }
+    func clearBlockedDirs() { blockedDirs = [] }
 
     // MARK: - 跳转：把会话所在终端唤到前台
 
@@ -191,7 +240,7 @@ final class AppStore: ObservableObject {
         p.executableURL = URL(fileURLWithPath: "/usr/bin/open")
         p.arguments = ["-b", bid]
         try? p.run()
-        Chiptune.shared.play(.select, enabled: soundEnabled)
+        play(.select)
     }
 
     // MARK: - 审批回写
@@ -215,7 +264,7 @@ final class AppStore: ObservableObject {
             byID[session.id] = s
             commit()
         }
-        Chiptune.shared.play(allow ? .select : .deny, enabled: soundEnabled)
+        play(allow ? .select : .deny)
         onChange()
     }
 
@@ -238,9 +287,13 @@ final class AppStore: ObservableObject {
     /// 排序：waiting > running > done > idle，再按最近更新。
     private func commit() {
         func rank(_ st: SessionState) -> Int {
-            switch st { case .waiting: return 0; case .running: return 1; case .done: return 2; case .idle: return 3 }
+            switch st { case .waiting: return 0; case .running: return 1; case .compacting: return 1
+                        case .done: return 2; case .idle: return 3 }
         }
-        sessions = byID.values.sorted {
+        sessions = byID.values
+            .filter { s in !hiddenSessionIDs.contains(s.id)
+                && !blockedDirs.contains(where: { !$0.isEmpty && s.cwd.contains($0) }) }
+            .sorted {
             rank($0.state) != rank($1.state) ? rank($0.state) < rank($1.state)
                                              : $0.lastUpdate > $1.lastUpdate
         }
