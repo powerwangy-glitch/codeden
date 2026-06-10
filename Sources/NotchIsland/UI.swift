@@ -7,7 +7,7 @@ extension Color {
     static let niText2 = Color(white: 0.66)
     static let niText3 = Color(white: 0.42)
     static let niHair  = Color.white.opacity(0.07)
-    static let niBG    = Color(red: 0x0C/255, green: 0x0C/255, blue: 0x0E/255)
+    static let niBG    = Color(red: 0x05/255, green: 0x05/255, blue: 0x06/255)
     static let niTool  = Color(red: 0x7A/255, green: 0xA2/255, blue: 1.0)
     static let niDone  = Color(red: 0x5F/255, green: 0xD4/255, blue: 0x7F/255)
     static let niWarn  = Color(red: 1.0, green: 0xB3/255, blue: 0x40/255)
@@ -99,10 +99,10 @@ struct PillView: View {
             // 横跨刘海：左翼放精灵、右翼放状态，中间让出刘海宽度（内容全在刘海外）
             HStack(spacing: 0) {
                 leftWing.frame(width: NotchLayout.wing, alignment: .trailing)
-                    .padding(.trailing, 10)
+                    .padding(.trailing, 6)
                 Color.clear.frame(width: n.width)
                 rightWing.frame(width: NotchLayout.wing, alignment: .leading)
-                    .padding(.leading, 10)
+                    .padding(.leading, 6)
             }
             .frame(height: n.height)            // 与刘海等高，齐平不突出
         } else {
@@ -114,41 +114,32 @@ struct PillView: View {
         }
     }
 
-    // 左翼：精灵们 / 休息时的睡眠精灵
+    // 左翼：只放一个图标——首个会话的精灵（休息时灰睡）。多会话不堆叠，让数字说话。
     @ViewBuilder private var leftWing: some View {
-        HStack(spacing: 5) {
-            if store.pillState == .rest {
-                SpriteView(agent: .claude, size: 18, sleeping: true)
-                Text("z z Z").font(.system(size: 9, design: .monospaced)).foregroundColor(.niText3)
-            } else {
-                ForEach(Array(store.sessions.prefix(3))) { s in
-                    SpriteView(agent: s.agent, size: 18, running: s.state.isBusy)
-                }
-                if store.sessions.count > 3 {
-                    Text("+\(store.sessions.count - 3)").font(.system(size: 10)).foregroundColor(.niText3)
-                }
-            }
+        if store.pillState == .rest {
+            SpriteView(agent: .claude, size: 17, sleeping: true)
+        } else if let first = store.sessions.first {
+            SpriteView(agent: first.agent, size: 17, running: first.state.isBusy)
         }
     }
 
-    // 右翼：状态词 + 额度危险标
+    // 右翼：一个字符表达一切——数字（在跑）/ ⚡（需要你）/ ✓（完成）/ z（休息）
     @ViewBuilder private var rightWing: some View {
-        HStack(spacing: 5) {
+        HStack(spacing: 4) {
             switch store.pillState {
             case .rest:
-                Text("都在休息").font(.system(size: 11)).foregroundColor(.niText2)
+                Text("z").font(.system(size: 11, design: .monospaced)).foregroundColor(.niText3)
             case .waiting:
-                Text("⚡").font(.system(size: 11)).foregroundColor(.niWarn)
-                Text("需要你").font(.system(size: 11).weight(.semibold)).foregroundColor(.niText)
+                Text("⚡").font(.system(size: 12)).foregroundColor(.niWarn)
             case .done:
-                Text("✓").font(.system(size: 11)).foregroundColor(.niDone)
-                Text("完成").font(.system(size: 11)).foregroundColor(.niText2)
+                Text("✓").font(.system(size: 12).weight(.bold)).foregroundColor(.niDone)
             case .running:
-                (Text("\(store.runningCount)").font(.system(size: 11).weight(.semibold)).foregroundColor(.niText)
-                 + Text(" 个在跑").font(.system(size: 11)).foregroundColor(.niText2))
+                Text("\(store.runningCount)")
+                    .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    .foregroundColor(Color(red: 0x5E/255, green: 0x9E/255, blue: 1.0))
             }
             if store.anyQuotaDanger {
-                Text("▲").font(.system(size: 11)).foregroundColor(.niDel)
+                Text("▲").font(.system(size: 10)).foregroundColor(.niDel)
             }
         }
     }
@@ -171,7 +162,6 @@ struct PanelView: View {
                 }.padding(.vertical, 18).frame(maxWidth: .infinity)
             } else {
                 ForEach(Array(store.sessions.enumerated()), id: \.element.id) { idx, s in
-                    if idx > 0 { Divider().background(Color.niHair) }
                     ItemRow(session: s,
                             onDecide: { allow in store.decide(s, allow: allow) },
                             onJump: { store.jump(s) },
@@ -180,6 +170,7 @@ struct PanelView: View {
                             onAnswer: { i in store.answer(s, option: i) })
                 }
             }
+            Color.clear.frame(height: 6)
         }
         .frame(width: CGFloat(store.panelWidth), alignment: .top)
         .fixedSize(horizontal: false, vertical: true)
@@ -348,8 +339,8 @@ struct ItemRow: View {
                 }
             }
         }
-        .padding(.horizontal, 16).padding(.vertical, 13)
-        .background(hovering ? Color.white.opacity(0.04) : Color.clear)
+        .padding(.horizontal, 16).padding(.vertical, 14)
+        .background(RoundedRectangle(cornerRadius: 12).fill(hovering ? Color.white.opacity(0.05) : Color.clear).padding(.horizontal, 6))
         .contentShape(Rectangle())
         .onHover { hovering = $0 }
         .onTapGesture { onJump() }     // 点行跳转到对应终端（审批按钮各自独立响应）
