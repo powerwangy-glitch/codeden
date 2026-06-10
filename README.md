@@ -55,8 +55,14 @@ Claude Code ──hooks──▶ bridge/notch-bridge.py ──追加──▶ ~/
 ## 下载安装
 
 最新版本见 [Releases](https://github.com/powerwangy-glitch/codeden/releases)：
-下载 `CodeDen-v0.1.2-mac.zip` → 解压 → 把 `NotchIsland.app` 拖进 `/Applications` → 打开 →
+下载 `CodeDen-v0.1.3-mac.zip` → 解压 → 把 `NotchIsland.app` 拖进 `/Applications` → 打开 →
 跟新人引导一键接入 Claude Code。（首次打开若被 Gatekeeper 拦：右键 → 打开。）
+
+## v0.1.3 更新
+
+- 点击 Codex 会话卡片时，优先打开对应 `codex://threads/<thread-id>` 对话，不再只把 Codex 拉到前台。
+- Claude Code bridge 增加 TTY 采集；在 Terminal / iTerm 中运行时，点击会话卡片会尝试切回对应 tab/session。
+- Codex 活动探测支持多个并发 thread，每个会话独立显示运行中并在停止后自动回落空闲。
 
 ## v0.1.2 更新
 
@@ -156,6 +162,6 @@ bridge 读到 → 输出 hookSpecificOutput.decision JSON → exit 0 → Claude 
 - ✅ 养成系统：怪兽升级/进化/伙伴图鉴（持久化 UserDefaults）
 - ✅ Codex 接入（实验性）：`python3 bridge/install.py --codex` 写入 notify 钩子，turn 完成时绿怪兽冒泡
 - ⏳ Gemini/Cursor 桥接
-- ⏳ 终端 Jump（按 cwd + AppleScript 跳回对应终端 tab）
+- ✅ 终端 Jump：Codex 按 thread deep link 跳转；Terminal / iTerm 按 TTY 跳回对应 tab/session（其他终端回退到打开 App）
 - ⏳ AskUserQuestion 选项回写（提问的数字选项点选回传）
 - ⏳ 公证发布（dist-notarize.sh，需你的 Developer ID）

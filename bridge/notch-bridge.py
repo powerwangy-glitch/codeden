@@ -178,6 +178,7 @@ def main():
     tp = os.environ.get("TERM_PROGRAM")
     term = TERM_NAMES.get(tp, tp)
     term_bundle = os.environ.get("__CFBundleIdentifier")
+    term_tty = os.environ.get("TTY")
 
     evt = {
         "ts": time.time(),
@@ -193,6 +194,7 @@ def main():
         "message": message,
         "term": term,
         "term_bundle": term_bundle,
+        "term_tty": term_tty,
     }
     # 计划模式：ExitPlanMode 的 plan 全文透传（刘海里读计划、直接批）
     if tool == "ExitPlanMode" and isinstance(tinput, dict) and tinput.get("plan"):

@@ -75,6 +75,7 @@ struct IngestEvent: Codable {
     var request_id: String?           // PermissionRequest 关联 id（审批回写用）
     var term: String?                 // 终端显示名（iTerm2/Ghostty…）
     var term_bundle: String?          // 终端 bundle id（点击跳转用）
+    var term_tty: String?             // 终端 TTY（用于精确跳回 tab/session）
     var plan: String?                 // ExitPlanMode 的计划全文
     var questions: [QuestionSpec]?    // AskUserQuestion 的问题列表
 }
@@ -106,6 +107,7 @@ struct Session: Identifiable {
     var requestID: String? = nil      // 非空 = 正在等你审批（可回写决定）
     var terminal: String = ""         // 终端显示名
     var bundleID: String? = nil       // 终端 bundle id（点击跳转）
+    var tty: String? = nil            // 终端 TTY（Terminal/iTerm 精确跳转）
     var cwd: String = ""              // 工作目录（会话过滤用）
     var plan: String? = nil           // 待审批的计划全文（ExitPlanMode）
     var questions: [QuestionSpec]? = nil  // 待回答的提问（AskUserQuestion）

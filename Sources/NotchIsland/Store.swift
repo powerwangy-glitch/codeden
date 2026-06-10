@@ -168,6 +168,7 @@ final class AppStore: ObservableObject {
         if let sub = e.subagents { s.subagents = max(0, sub) }
         if let t = e.term, !t.isEmpty { s.terminal = t }
         if let b = e.term_bundle, !b.isEmpty { s.bundleID = b }
+        if let tty = e.term_tty, !tty.isEmpty { s.tty = tty }
         if let c = e.cwd, !c.isEmpty { s.cwd = c }
         s.lastUpdate = Date()
 
@@ -344,13 +345,98 @@ final class AppStore: ObservableObject {
     // MARK: - 跳转：把会话所在终端唤到前台
 
     func jump(_ session: Session) {
+        if session.agent == .codex, openCodexThread(session) {
+            play(.select)
+            return
+        }
+        if let tty = session.tty, jumpToTerminalTTY(session, tty: tty) {
+            play(.select)
+            return
+        }
         guard let bid = session.bundleID, !bid.isEmpty else { return }
-        // open -b 最可靠：无论目标 App 是否在跑都会唤到前台（后台 agent 调 activate 常失效）
+        openBundle(bid)
+        play(.select)
+    }
+
+    private func openCodexThread(_ session: Session) -> Bool {
+        guard session.id.hasPrefix("codex-"),
+              let url = URL(string: "codex://threads/\(String(session.id.dropFirst(6)))") else {
+            return false
+        }
+        NSWorkspace.shared.open(url)
+        return true
+    }
+
+    private func jumpToTerminalTTY(_ session: Session, tty: String) -> Bool {
+        guard let bid = session.bundleID, !bid.isEmpty else { return false }
+        switch bid {
+        case "com.googlecode.iterm2", "com.googlecode.iterm2.preview":
+            return runAppleScript(iTermJumpScript(tty))
+        case "com.apple.Terminal":
+            return runAppleScript(terminalJumpScript(tty))
+        default:
+            openBundle(bid)
+            return false
+        }
+    }
+
+    private func openBundle(_ bid: String) {
         let p = Process()
         p.executableURL = URL(fileURLWithPath: "/usr/bin/open")
         p.arguments = ["-b", bid]
         try? p.run()
-        play(.select)
+    }
+
+    private func runAppleScript(_ script: String) -> Bool {
+        let p = Process()
+        p.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
+        p.arguments = ["-e", script]
+        do {
+            try p.run()
+            p.waitUntilExit()
+            return p.terminationStatus == 0
+        } catch {
+            return false
+        }
+    }
+
+    private func terminalJumpScript(_ tty: String) -> String {
+        let escaped = tty.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "\"", with: "\\\"")
+        return """
+        tell application id "com.apple.Terminal"
+            activate
+            repeat with w in windows
+                repeat with t in tabs of w
+                    if tty of t is "\(escaped)" then
+                        set selected tab of w to t
+                        set index of w to 1
+                        return
+                    end if
+                end repeat
+            end repeat
+        end tell
+        """
+    }
+
+    private func iTermJumpScript(_ tty: String) -> String {
+        let escaped = tty.replacingOccurrences(of: "\\", with: "\\\\").replacingOccurrences(of: "\"", with: "\\\"")
+        return """
+        tell application id "com.googlecode.iterm2"
+            activate
+            repeat with w in windows
+                repeat with t in tabs of w
+                    repeat with s in sessions of t
+                        if tty of s is "\(escaped)" then
+                            select w
+                            select t
+                            select s
+                            return
+                        end if
+                    end repeat
+                end repeat
+            end repeat
+        end tell
+        """
     }
 
     // MARK: - 审批回写

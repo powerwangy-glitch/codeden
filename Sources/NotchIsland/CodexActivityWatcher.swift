@@ -8,8 +8,8 @@ final class CodexActivityWatcher {
     private let onEvent: (IngestEvent) -> Void
     private let home = FileManager.default.homeDirectoryForCurrentUser
     private var timer: Timer?
-    private var lastEmittedThread: String?
-    private var lastEmitAt: Date = .distantPast
+    private var activeThreads: [String: Date] = [:]
+    private var lastRunningEmitAt: [String: Date] = [:]
     private let activeLookbackSeconds = 6
     private let idleAfterSeconds: TimeInterval = 10
 
@@ -31,19 +31,23 @@ final class CodexActivityWatcher {
     }
 
     private func poll() {
-        guard let threadID = latestActiveThreadID() else {
+        let activeIDs = activeThreadIDs()
+        guard !activeIDs.isEmpty else {
             markIdleIfStale()
             return
         }
-        if let previous = lastEmittedThread, previous != threadID {
-            emitIdle(previous)
+        let now = Date()
+        for threadID in activeIDs {
+            activeThreads[threadID] = now
+            if now.timeIntervalSince(lastRunningEmitAt[threadID] ?? .distantPast) >= 4 {
+                emitRunning(threadID)
+                lastRunningEmitAt[threadID] = now
+            }
         }
-        if threadID == lastEmittedThread, Date().timeIntervalSince(lastEmitAt) < 4 {
-            return
-        }
-        lastEmittedThread = threadID
-        lastEmitAt = Date()
+        markIdleIfStale()
+    }
 
+    private func emitRunning(_ threadID: String) {
         let meta = threadMeta(threadID)
         let cwd = meta.cwd.isEmpty ? FileManager.default.currentDirectoryPath : meta.cwd
         let project = URL(fileURLWithPath: cwd).lastPathComponent
@@ -59,9 +63,9 @@ final class CodexActivityWatcher {
                       user: prompt))
     }
 
-    private func latestActiveThreadID() -> String? {
+    private func activeThreadIDs() -> [String] {
         let db = home.appendingPathComponent(".codex/logs_2.sqlite").path
-        guard FileManager.default.fileExists(atPath: db) else { return nil }
+        guard FileManager.default.fileExists(atPath: db) else { return [] }
         let query = """
         select thread_id from logs
         where thread_id is not null
@@ -71,18 +75,26 @@ final class CodexActivityWatcher {
             'codex_api::endpoint::responses_websocket',
             'codex_core::stream_events_utils'
           )
-        order by ts desc, ts_nanos desc
-        limit 1;
+        group by thread_id
+        order by max(ts) desc, max(ts_nanos) desc
+        limit 8;
         """
-        return runSQLite(db, query).trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty
+        return runSQLite(db, query)
+            .split(whereSeparator: \.isNewline)
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
     }
 
     private func markIdleIfStale() {
-        guard let threadID = lastEmittedThread,
-              Date().timeIntervalSince(lastEmitAt) >= idleAfterSeconds else { return }
-        emitIdle(threadID)
-        lastEmittedThread = nil
-        lastEmitAt = .distantPast
+        let now = Date()
+        let staleIDs = activeThreads.compactMap { threadID, lastSeen in
+            now.timeIntervalSince(lastSeen) >= idleAfterSeconds ? threadID : nil
+        }
+        for threadID in staleIDs {
+            emitIdle(threadID)
+            activeThreads.removeValue(forKey: threadID)
+            lastRunningEmitAt.removeValue(forKey: threadID)
+        }
     }
 
     private func emitIdle(_ threadID: String) {
@@ -129,8 +141,4 @@ final class CodexActivityWatcher {
         let data = pipe.fileHandleForReading.readDataToEndOfFile()
         return String(data: data, encoding: .utf8) ?? ""
     }
-}
-
-private extension String {
-    var nilIfEmpty: String? { isEmpty ? nil : self }
 }
