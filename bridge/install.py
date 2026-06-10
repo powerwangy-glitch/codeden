@@ -7,7 +7,7 @@
 - 先备份原文件到 settings.json.notch-backup。
 - 可重复运行：已安装则跳过（靠命令里的 notch-bridge.py 标记识别）。
 """
-import os, json, sys, shutil, time
+import os, json, sys, shutil, time, shlex
 
 HOME = os.path.expanduser("~")
 SETTINGS = os.path.join(HOME, ".claude", "settings.json")
@@ -22,7 +22,9 @@ TOOL_EVENTS = ["PreToolUse", "PostToolUse", "PermissionRequest", "Notification"]
 LIFE_EVENTS = ["UserPromptSubmit", "Stop", "SubagentStart", "SubagentStop",
                "SessionStart", "SessionEnd", "PreCompact"]
 
-COMMAND = "/bin/sh -c '/usr/bin/env python3 \"%s\" >/dev/null 2>&1; exit 0'" % SCRIPT
+# Keep stdout intact: Claude Code reads PermissionRequest decisions from stdout.
+# Stderr is still swallowed so bridge failures never interrupt the host session.
+COMMAND = "/bin/sh -c '/usr/bin/env python3 \"%s\" 2>/dev/null; exit 0'" % SCRIPT
 
 
 def load(path):
@@ -38,6 +40,22 @@ def already_has(group_list):
             if MARKER in (h.get("command") or ""):
                 return True
     return False
+
+
+def refresh_existing(group_list, event_name):
+    """Bring previously installed NotchIsland hooks up to the current command."""
+    changed = 0
+    for g in group_list:
+        for h in g.get("hooks", []):
+            if MARKER not in (h.get("command") or ""):
+                continue
+            if h.get("command") != COMMAND:
+                h["command"] = COMMAND
+                changed += 1
+            if event_name == "PermissionRequest" and h.get("timeout") != 86400:
+                h["timeout"] = 86400
+                changed += 1
+    return changed
 
 
 def setup_statusline(data):
@@ -85,31 +103,70 @@ def setup_codex():
     if os.path.exists(cfg):
         with open(cfg) as f:
             body = f.read()
-    if "notch-codex-notify" in body:
-        print("Codex notify 已安装，跳过")
-        return
     import re
     m = re.search(r"^notify\s*=\s*(\[.*?\])\s*$", body, re.M)
     if os.path.exists(cfg):
         shutil.copy2(cfg, cfg + ".notch-backup")
     chain = os.path.join(BIN_DIR, "codex-notify-chain.sh")
+    def recover_orig_from_chain():
+        if not os.path.exists(chain):
+            return []
+        try:
+            lines = open(chain).read().splitlines()
+        except Exception:
+            return []
+        for line in lines:
+            stripped = line.strip()
+            if not stripped or stripped.startswith("#") or "notch-codex-notify.py" in stripped or stripped == "wait":
+                continue
+            if stripped.endswith("&"):
+                stripped = stripped[:-1].strip()
+            stripped = stripped.replace('"$@"', "").replace("'$@'", "").strip()
+            try:
+                return shlex.split(stripped)
+            except Exception:
+                return []
+        return []
+
+    def clean_orig_notify(orig):
+        """Avoid chaining NotchIsland into itself via Codex Computer Use previous-notify."""
+        if not orig:
+            return []
+        if len(orig) == 1 and orig[0] == chain:
+            orig = recover_orig_from_chain()
+        out = []
+        i = 0
+        while i < len(orig):
+            if orig[i] == "--previous-notify" and i + 1 < len(orig):
+                i += 2
+                continue
+            out.append(orig[i])
+            i += 1
+        return [x for x in out if x != chain]
     if m:
         # 已有 notify（如 Codex Computer Use）→ 链式：先原命令，再码岛
         try:
-            orig = json.loads(m.group(1))
+            orig = clean_orig_notify(json.loads(m.group(1)))
         except Exception:
             print("⚠️ 无法解析现有 notify，跳过"); return
-        orig_cmd = " ".join("'%s'" % a.replace("'", "'\\''") for a in orig)
+        if not orig:
+            orig_cmd = ""
+        else:
+            orig_cmd = " ".join("'%s'" % a.replace("'", "'\\''") for a in orig)
         with open(chain, "w") as f:
-            f.write('#!/bin/bash\n# 码岛链式 notify：保留原有 notify + 码岛桥接\n'
-                    '%s "$@" &\n'
-                    '/usr/bin/env python3 "%s" "$@" &\nwait\n' % (orig_cmd, dst))
+            f.write('#!/bin/bash\n# 码岛链式 notify：保留原有 notify + 码岛桥接\n')
+            if orig_cmd:
+                f.write('%s "$@" &\n' % orig_cmd)
+            f.write('/usr/bin/env python3 "%s" "$@" &\nwait\n' % dst)
         os.chmod(chain, 0o755)
         body = re.sub(r"^notify\s*=\s*\[.*?\]\s*$",
                       'notify = ["%s"]' % chain, body, count=1, flags=re.M)
         with open(cfg, "w") as f:
             f.write(body)
-        print("已安装链式 Codex notify（原 notify 保留：%s）" % orig[0].split("/")[-1])
+        if orig:
+            print("已安装链式 Codex notify（原 notify 保留：%s）" % orig[0].split("/")[-1])
+        else:
+            print("已安装 Codex notify 桥接（已清理自引用链）")
     else:
         with open(cfg, "a") as f:
             f.write('\n# NotchIsland (码岛) Codex 桥接\nnotify = ["python3", "%s"]\n' % dst)
@@ -134,9 +191,11 @@ def main():
 
     hooks = data.setdefault("hooks", {})
     added = 0
+    refreshed = 0
     for ev in TOOL_EVENTS + LIFE_EVENTS:
         arr = hooks.setdefault(ev, [])
         if already_has(arr):
+            refreshed += refresh_existing(arr, ev)
             continue
         hook = {"type": "command", "command": COMMAND}
         if ev == "PermissionRequest":
@@ -156,6 +215,8 @@ def main():
 
     os.makedirs(os.path.join(HOME, ".notch-island"), exist_ok=True)
     print("已安装 NotchIsland hook：新增 %d 个事件钩子" % added)
+    if refreshed:
+        print("已刷新 %d 个既有码岛 hook 命令" % refreshed)
     print("已安装额度采集 statusLine（链式保留原有 statusLine）")
     if "--codex" in sys.argv:
         setup_codex()

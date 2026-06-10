@@ -14,6 +14,41 @@ extension Color {
     static let niDel   = Color(red: 1.0, green: 0x7A/255, blue: 0x72/255)
 }
 
+struct ToolGlyph {
+    let symbol: String
+    let color: Color
+    let label: String
+
+    static func from(_ raw: String?) -> ToolGlyph? {
+        guard let raw, !raw.isEmpty else { return nil }
+        let key = raw.lowercased()
+        if key.contains("bash") { return .init(symbol: "terminal.fill", color: .niWarn, label: raw) }
+        if key.contains("read") { return .init(symbol: "doc.text.magnifyingglass", color: Color(red: 0x7A/255, green: 0xA2/255, blue: 1), label: raw) }
+        if key.contains("edit") || key.contains("write") || key.contains("notebookedit") {
+            return .init(symbol: "square.and.pencil", color: Color(red: 0x5F/255, green: 0xD4/255, blue: 0x7F/255), label: raw)
+        }
+        if key.contains("grep") || key.contains("glob") || key.contains("search") {
+            return .init(symbol: "magnifyingglass", color: Color(red: 0x8E/255, green: 0xD8/255, blue: 1), label: raw)
+        }
+        if key.contains("web") || key.contains("fetch") {
+            return .init(symbol: "globe", color: Color(red: 0x8B/255, green: 0xC7/255, blue: 1), label: raw)
+        }
+        if key.contains("task") {
+            return .init(symbol: "sparkles", color: Color(red: 0xC0/255, green: 0x8B/255, blue: 1), label: raw)
+        }
+        if key.contains("todo") {
+            return .init(symbol: "checklist", color: Color(red: 0x7E/255, green: 0xE7/255, blue: 0x87/255), label: raw)
+        }
+        if key.contains("exitplan") || key.contains("plan") {
+            return .init(symbol: "map.fill", color: .niWarn, label: raw)
+        }
+        if key.contains("ask") || key.contains("question") {
+            return .init(symbol: "questionmark.bubble.fill", color: .niWarn, label: raw)
+        }
+        return .init(symbol: "wrench.and.screwdriver.fill", color: .niTool, label: raw)
+    }
+}
+
 // MARK: - 可见岛体：背景尺寸由弹簧 islandSize 驱动 → 果冻回弹
 
 struct IslandView: View {
@@ -156,6 +191,7 @@ struct PanelView: View {
             // 顶部让出刘海高度，所有内容落在刘海下方（完整可见）
             if store.notch.hasNotch { Color.clear.frame(height: store.notch.height) }
             QuotaHeader(store: store)
+            StatusStrip(store: store)
             if store.sessions.isEmpty {
                 VStack(spacing: 9) {
                     SpriteView(agent: .claude, size: 30, sleeping: true)
@@ -179,6 +215,46 @@ struct PanelView: View {
         }
         .frame(width: CGFloat(store.panelWidth), alignment: .top)
         .fixedSize(horizontal: false, vertical: true)
+    }
+}
+
+struct StatusStrip: View {
+    @ObservedObject var store: AppStore
+
+    var body: some View {
+        HStack(spacing: 8) {
+            statusPill("需要处理", store.waitingCount, .niWarn)
+            statusPill("运行中", store.runningCount, .niTool)
+            statusPill("刚完成", store.doneCount, .niDone)
+            Spacer(minLength: 6)
+            Text(statusText)
+                .font(.system(size: 10.5))
+                .foregroundColor(.niText3)
+                .lineLimit(1)
+        }
+        .padding(.horizontal, 16)
+        .padding(.bottom, 8)
+    }
+
+    private var statusText: String {
+        if store.waitingCount > 0 { return "有操作等你决定" }
+        if store.runningCount > 0 { return "agent 正在执行" }
+        if store.doneCount > 0 { return "刚结束一轮任务" }
+        return "都在休息"
+    }
+
+    private func statusPill(_ label: String, _ count: Int, _ color: Color) -> some View {
+        HStack(spacing: 5) {
+            Circle().fill(count > 0 ? color : Color.niText3.opacity(0.55)).frame(width: 5, height: 5)
+            Text(label)
+            Text("\(count)").fontWeight(.semibold)
+        }
+        .font(.system(size: 10.5))
+        .foregroundColor(count > 0 ? color : .niText3)
+        .padding(.horizontal, 7)
+        .padding(.vertical, 4)
+        .background((count > 0 ? color : Color.white).opacity(count > 0 ? 0.12 : 0.05))
+        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
     }
 }
 
@@ -320,12 +396,14 @@ struct ItemRow: View {
                                 .font(.system(size: 10.5)).foregroundColor(.niWarn)
                             if q.multiSelect == true {
                                 Text("· 多选请在终端操作").font(.system(size: 10)).foregroundColor(.niText3)
+                            } else if session.bundleID == nil {
+                                Text("· 无法定位终端").font(.system(size: 10)).foregroundColor(.niText3)
                             }
                         }
                         Text(q.question).font(.system(size: 12.5)).foregroundColor(.niText)
                             .fixedSize(horizontal: false, vertical: true)
                         ForEach(Array(q.options.enumerated()), id: \.offset) { i, opt in
-                            Button { if q.multiSelect != true { onAnswer(i) } } label: {
+                            Button { onAnswer(i) } label: {
                                 HStack(alignment: .top, spacing: 8) {
                                     Text("\(i + 1)").font(.system(size: 10).weight(.bold)).foregroundColor(.niText3)
                                         .frame(width: 16, height: 16)
@@ -338,7 +416,10 @@ struct ItemRow: View {
                                         }
                                     }
                                 }
-                            }.buttonStyle(.plain)
+                            }
+                            .buttonStyle(.plain)
+                            .disabled(q.multiSelect == true || session.bundleID == nil)
+                            .opacity(q.multiSelect == true || session.bundleID == nil ? 0.55 : 1)
                         }
                     }
                     .padding(.top, 6)
@@ -370,13 +451,25 @@ struct ItemRow: View {
     }
 
     @ViewBuilder private var activity: some View {
-        HStack(spacing: 6) {
-            if let t = session.line.tool {
-                Text(t).font(.system(size: 12)).foregroundColor(.niTool)
+        HStack(alignment: .top, spacing: 8) {
+            if let glyph = ToolGlyph.from(session.line.tool) {
+                HStack(spacing: 5) {
+                    Image(systemName: glyph.symbol)
+                        .font(.system(size: 10.5, weight: .semibold))
+                    Text(glyph.label)
+                        .font(.system(size: 11.5, weight: .semibold))
+                        .lineLimit(1)
+                }
+                .foregroundColor(glyph.color)
+                .padding(.horizontal, 7)
+                .padding(.vertical, 3)
+                .background(glyph.color.opacity(0.13))
+                .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
             }
             Text(session.line.text).font(.system(size: 12))
                 .foregroundColor(session.state == .done ? .niDone : .niText3)
-                .lineLimit(1).truncationMode(.tail)
+                .lineLimit(session.state == .waiting ? 2 : 1).truncationMode(.tail)
+                .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 

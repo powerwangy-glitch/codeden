@@ -55,8 +55,18 @@ Claude Code ──hooks──▶ bridge/notch-bridge.py ──追加──▶ ~/
 ## 下载安装
 
 最新版本见 [Releases](https://github.com/powerwangy-glitch/codeden/releases)：
-下载 `CodeDen-v0.1-mac.zip` → 解压 → 把 `NotchIsland.app` 拖进 `/Applications` → 打开 →
+下载 `CodeDen-v0.1.1-mac.zip` → 解压 → 把 `NotchIsland.app` 拖进 `/Applications` → 打开 →
 跟新人引导一键接入 Claude Code。（首次打开若被 Gatekeeper 拦：右键 → 打开。）
+
+## v0.1.1 更新
+
+- 启动加入一段短芯片电音，形成更明确的「码岛启动」氛围。
+- 展开面板增加状态摘要：需要处理 / 运行中 / 刚完成，一眼判断 agent 当前状态。
+- 工具运行行增加图标与颜色：Bash、Edit/Write、Read、Search、WebFetch、Task、Todo、Plan、Question 等工具更容易扫读。
+- Claude Code / Codex 标签配色区分更明显，Claude Code 偏黄色、Codex 偏绿色。
+- 修复 Claude Code 审批回写安装命令吞 stdout 的问题，刘海里的允许 / 拒绝能正确回传。
+- 打包补齐 statusLine 与 Codex notify 桥接脚本，正式 .app 一键安装更完整。
+- Codex notify 过滤内部标题生成事件，并清理链式 notify 自引用，减少无意义卡片。
 
 ## 构建 & 运行
 

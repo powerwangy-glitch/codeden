@@ -12,6 +12,12 @@ import sys, os, json, time
 
 OUT = os.path.join(os.path.expanduser("~"), ".notch-island", "events.jsonl")
 
+INTERNAL_PROMPT_MARKERS = [
+    "You will be presented with a user prompt",
+    "Generate a concise UI title",
+    "Generate a clear, informative task title",
+]
+
 
 def main():
     if len(sys.argv) < 2:
@@ -26,10 +32,14 @@ def main():
     msgs = n.get("input-messages") or []
     if msgs:
         user = str(msgs[-1])[:200]
-    cwd = os.getcwd()
+    full_user = str(msgs[-1]) if msgs else ""
+    if any(marker in full_user for marker in INTERNAL_PROMPT_MARKERS):
+        return
+    cwd = n.get("cwd") or os.getcwd()
+    session_id = n.get("thread-id") or n.get("turn-id") or "main"
     evt = {
         "ts": time.time(),
-        "session": "codex-" + str(n.get("turn-id") or n.get("thread-id") or "main"),
+        "session": "codex-" + str(session_id),
         "agent": "codex",
         "project": os.path.basename(cwd.rstrip("/")) or "Codex",
         "cwd": cwd,

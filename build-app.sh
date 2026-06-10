@@ -11,7 +11,12 @@ rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources/bridge"
 
 cp ".build/release/NotchIsland" "$APP/Contents/MacOS/NotchIsland"
-cp bridge/notch-bridge.py bridge/install.py bridge/uninstall.py "$APP/Contents/Resources/bridge/"
+cp bridge/notch-bridge.py \
+   bridge/install.py \
+   bridge/uninstall.py \
+   bridge/notch-statusline.py \
+   bridge/notch-codex-notify.py \
+   "$APP/Contents/Resources/bridge/"
 chmod +x "$APP/Contents/Resources/bridge/"*.py
 
 # 图标：没有就现生成
@@ -31,8 +36,8 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
   <key>CFBundleExecutable</key>      <string>NotchIsland</string>
   <key>CFBundleIconFile</key>        <string>AppIcon</string>
   <key>CFBundlePackageType</key>     <string>APPL</string>
-  <key>CFBundleShortVersionString</key> <string>0.1.0</string>
-  <key>CFBundleVersion</key>         <string>1</string>
+  <key>CFBundleShortVersionString</key> <string>0.1.1</string>
+  <key>CFBundleVersion</key>         <string>2</string>
   <key>LSMinimumSystemVersion</key>  <string>14.0</string>
   <key>LSUIElement</key>             <true/>
   <key>NSHighResolutionCapable</key> <true/>

@@ -122,6 +122,8 @@ final class AppStore: ObservableObject {
         return .rest
     }
     var runningCount: Int { sessions.filter { $0.state.isBusy }.count }
+    var waitingCount: Int { sessions.filter { $0.state == .waiting }.count }
+    var doneCount: Int { sessions.filter { $0.state == .done }.count }
     var anyQuotaDanger: Bool { quotas.contains { $0.danger } }
 
     private var byID: [String: Session] = [:]
@@ -129,6 +131,7 @@ final class AppStore: ObservableObject {
     private let onChange: () -> Void
     private let home = FileManager.default.homeDirectoryForCurrentUser
     private var suppressBuddyXP = false      // 演示数据不计经验
+    private let demoSessionIDs: Set<String> = ["demo-1", "demo-2"]
 
     /// onChange 在状态变化后调用（用于刘海窗口尺寸/动画刷新与声音）。
     init(onChange: @escaping () -> Void = {}) {
@@ -149,6 +152,9 @@ final class AppStore: ObservableObject {
     // MARK: - 事件消费（状态机核心）
 
     func ingest(_ e: IngestEvent) {
+        if !demoSessionIDs.contains(e.session) {
+            clearDemoSessions()
+        }
         let agent = AgentKind.from(e.agent)
         var s = byID[e.session] ?? Session(
             id: e.session, agent: agent,
@@ -278,6 +284,23 @@ final class AppStore: ObservableObject {
     /// 选第 idx 个选项：唤起对应终端 → 键入数字 → 回车。需要「辅助功能」权限。
     func answer(_ session: Session, option idx: Int) {
         guard let qs = session.questions, var s = byID[session.id] else { return }
+        guard let bid = session.bundleID, !bid.isEmpty else {
+            s.line = .init(tool: nil, text: "无法定位终端，请回终端回答")
+            byID[session.id] = s
+            commit()
+            onChange()
+            return
+        }
+        guard AXIsProcessTrusted() else {
+            s.line = .init(tool: nil, text: "需要开启辅助功能权限，或回终端回答")
+            byID[session.id] = s
+            commit()
+            if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
+                NSWorkspace.shared.open(url)
+            }
+            onChange()
+            return
+        }
         jump(session)   // 先把终端唤到前台
         let digit = "\(idx + 1)"
         let script = """
@@ -388,17 +411,24 @@ final class AppStore: ObservableObject {
 
     /// 排序：waiting > running > done > idle，再按最近更新。
     private func commit() {
+        let activeCutoff = Date().addingTimeInterval(-20 * 60)
         func rank(_ st: SessionState) -> Int {
             switch st { case .waiting: return 0; case .running: return 1; case .compacting: return 1
                         case .done: return 2; case .idle: return 3 }
         }
         sessions = byID.values
             .filter { s in !hiddenSessionIDs.contains(s.id)
-                && !blockedDirs.contains(where: { !$0.isEmpty && s.cwd.contains($0) }) }
+                && !blockedDirs.contains(where: { !$0.isEmpty && s.cwd.contains($0) })
+                && (s.state != .idle || s.lastUpdate >= activeCutoff) }
             .sorted {
             rank($0.state) != rank($1.state) ? rank($0.state) < rank($1.state)
                                              : $0.lastUpdate > $1.lastUpdate
-        }
+        }.prefix(6).map { $0 }
+    }
+
+    private func clearDemoSessions() {
+        guard demoSessionIDs.contains(where: { byID[$0] != nil }) else { return }
+        for id in demoSessionIDs { remove(id) }
     }
 
     // MARK: - 演示数据（无事件时也能看到界面）

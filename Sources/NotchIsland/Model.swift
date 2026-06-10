@@ -7,7 +7,7 @@ enum AgentKind: String, Codable, CaseIterable {
 
     var displayName: String {
         switch self {
-        case .claude: return "Claude"
+        case .claude: return "Claude Code"
         case .codex:  return "Codex"
         case .gemini: return "Gemini"
         case .cursor: return "Cursor"
@@ -16,8 +16,8 @@ enum AgentKind: String, Codable, CaseIterable {
     }
     var color: Color {
         switch self {
-        case .claude: return Color(red: 0xD9/255, green: 0x77/255, blue: 0x57/255)
-        case .codex:  return Color(red: 0x7A/255, green: 0xA2/255, blue: 1.0)
+        case .claude: return Color(red: 0xFF/255, green: 0xC8/255, blue: 0x57/255)
+        case .codex:  return Color(red: 0x10/255, green: 0xA3/255, blue: 0x7F/255)
         case .gemini: return Color(red: 0x5E/255, green: 0xA0/255, blue: 1.0)
         case .cursor: return Color(red: 0xC0/255, green: 0x8B/255, blue: 1.0)
         case .unknown: return .gray

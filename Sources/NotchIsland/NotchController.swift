@@ -53,6 +53,15 @@ final class NotchController {
             .sink { [weak self] _ in self?.retarget() }
             .store(in: &bag)
 
+        Publishers.Merge3(
+            store.$sessions.dropFirst().map { _ in () }.eraseToAnyPublisher(),
+            store.$quotas.dropFirst().map { _ in () }.eraseToAnyPublisher(),
+            store.$panelWidth.dropFirst().map { _ in () }.eraseToAnyPublisher()
+        )
+        .debounce(for: .milliseconds(80), scheduler: RunLoop.main)
+        .sink { [weak self] _ in self?.retarget() }
+        .store(in: &bag)
+
         // 屏幕变化（插拔显示器/分辨率）→ 重新读刘海几何
         NotificationCenter.default.addObserver(
             forName: NSApplication.didChangeScreenParametersNotification,

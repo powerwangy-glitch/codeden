@@ -29,6 +29,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         store.openOnboarding = { [weak self] in self?.onboarding.show() }
         controller.show()
         writePidfile()
+        store.play(.startup)
 
         // 首次启动弹引导
         if OnboardingController.shouldShow {

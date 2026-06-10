@@ -4,7 +4,7 @@ import AVFoundation
 final class Chiptune {
     static let shared = Chiptune()
 
-    enum Cue { case done, alert, question, select, deny }
+    enum Cue { case startup, done, alert, question, select, deny }
 
     private let engine = AVAudioEngine()
     private var source: AVAudioSourceNode!
@@ -60,8 +60,9 @@ final class Chiptune {
         ensureRunning()
         queueLock.lock(); let now = clock; queueLock.unlock()
         let seq: [(Double, Double, Double, Wave, Double)]
-        let A4 = 440.0, C5 = 523.25, E5 = 659.25, G5 = 783.99, A5 = 880.0, C6 = 1046.5
+        let A4 = 440.0, C5 = 523.25, D5 = 587.33, E5 = 659.25, G5 = 783.99, A5 = 880.0, C6 = 1046.5, D6 = 1174.66
         switch cue {
+        case .startup:  seq = [(C5,0,0.09,.triangle,0.12),(E5,0.07,0.10,.triangle,0.13),(G5,0.14,0.11,.square,0.13),(D6,0.23,0.18,.square,0.11),(D5,0.02,0.22,.saw,0.045)]
         case .done:     seq = [(G5,0,0.12,.square,0.18),(C6,0.09,0.16,.square,0.18),(E5,0,0.12,.triangle,0.10)]
         case .alert:    seq = [(A4,0,0.10,.saw,0.16),(A4*0.94,0.11,0.16,.saw,0.16)]
         case .question: seq = [(E5,0,0.07,.square,0.16),(A5,0.08,0.13,.square,0.16)]
