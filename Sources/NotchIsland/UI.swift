@@ -170,7 +170,8 @@ struct PanelView: View {
                             onDecide: { allow in store.decide(s, allow: allow) },
                             onJump: { store.jump(s) },
                             onHide: { store.hideSession(s) },
-                            onBlockDir: { store.blockDir(s) })
+                            onBlockDir: { store.blockDir(s) },
+                            onAnswer: { i in store.answer(s, option: i) })
                 }
             }
         }
@@ -238,6 +239,7 @@ struct ItemRow: View {
     var onJump: () -> Void = {}
     var onHide: () -> Void = {}
     var onBlockDir: () -> Void = {}
+    var onAnswer: (Int) -> Void = { _ in }
     @State private var hovering = false
     var body: some View {
         HStack(alignment: .top, spacing: 13) {
@@ -271,8 +273,63 @@ struct ItemRow: View {
                 }
                 // 第三行：当前动作 / 审批 / 提问
                 activity
+                // 计划审批（ExitPlanMode）：读计划 → 批准/驳回
+                if let plan = session.plan, session.requestID != nil, session.state == .waiting {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("📋 计划").font(.system(size: 11).weight(.semibold)).foregroundColor(.niWarn)
+                        ScrollView {
+                            Text(plan).font(.system(size: 11.5)).foregroundColor(.niText2)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        .frame(maxHeight: 150)
+                        .padding(8)
+                        .background(Color.black.opacity(0.35))
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                        HStack(spacing: 18) {
+                            Button { onDecide(true) } label: {
+                                Text("批准计划，开始执行").font(.system(size: 12.5).weight(.semibold)).foregroundColor(.niDone)
+                            }.buttonStyle(.plain)
+                            Button { onDecide(false) } label: {
+                                Text("驳回").font(.system(size: 12.5).weight(.semibold)).foregroundColor(.niText2)
+                            }.buttonStyle(.plain)
+                        }
+                    }
+                    .padding(.top, 6)
+                }
+                // 答题向导（AskUserQuestion）
+                else if let qs = session.questions, session.state == .waiting, session.questionIndex < qs.count {
+                    let q = qs[session.questionIndex]
+                    VStack(alignment: .leading, spacing: 7) {
+                        HStack {
+                            Text(qs.count > 1 ? "第 \(session.questionIndex + 1) / \(qs.count) 题" : "Claude 的提问")
+                                .font(.system(size: 10.5)).foregroundColor(.niWarn)
+                            if q.multiSelect == true {
+                                Text("· 多选请在终端操作").font(.system(size: 10)).foregroundColor(.niText3)
+                            }
+                        }
+                        Text(q.question).font(.system(size: 12.5)).foregroundColor(.niText)
+                            .fixedSize(horizontal: false, vertical: true)
+                        ForEach(Array(q.options.enumerated()), id: \.offset) { i, opt in
+                            Button { if q.multiSelect != true { onAnswer(i) } } label: {
+                                HStack(alignment: .top, spacing: 8) {
+                                    Text("\(i + 1)").font(.system(size: 10).weight(.bold)).foregroundColor(.niText3)
+                                        .frame(width: 16, height: 16)
+                                        .background(Color.white.opacity(0.08))
+                                        .clipShape(RoundedRectangle(cornerRadius: 4))
+                                    VStack(alignment: .leading, spacing: 1) {
+                                        Text(opt.label).font(.system(size: 12)).foregroundColor(.niText2)
+                                        if let d = opt.description, !d.isEmpty {
+                                            Text(d).font(.system(size: 10.5)).foregroundColor(.niText3).lineLimit(2)
+                                        }
+                                    }
+                                }
+                            }.buttonStyle(.plain)
+                        }
+                    }
+                    .padding(.top, 6)
+                }
                 // 审批按钮（仅在等待你审批且可回写时出现）
-                if session.requestID != nil, session.state == .waiting {
+                else if session.requestID != nil, session.state == .waiting {
                     HStack(spacing: 18) {
                         Button { onDecide(true) } label: {
                             Text("允许").font(.system(size: 12.5).weight(.semibold)).foregroundColor(.niDone)

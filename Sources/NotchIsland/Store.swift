@@ -148,20 +148,36 @@ final class AppStore: ObservableObject {
             s.line = .init(tool: nil, text: "思考中…")
 
         case "PreToolUse":
-            s.state = .running
             s.requestID = nil
-            s.line = .init(tool: e.tool, text: e.tool_summary ?? "")
+            if e.tool == "AskUserQuestion", let qs = e.questions, !qs.isEmpty {
+                // Claude 在终端里等你答题 → 刘海展示答题向导
+                s.state = .waiting
+                s.questions = qs
+                s.questionIndex = 0
+                s.line = .init(tool: nil, text: "Claude 的提问（\(qs.count) 个问题）")
+            } else {
+                s.state = .running
+                s.questions = nil
+                s.line = .init(tool: e.tool, text: e.tool_summary ?? "")
+            }
 
         case "PostToolUse":
             s.state = .running
             s.requestID = nil
+            s.questions = nil
+            s.plan = nil
             if !suppressBuddyXP { buddies.record(agent, .tool) }
             if let t = e.tool { s.line = .init(tool: t, text: e.tool_summary ?? "完成") }
 
         case "PermissionRequest":
             s.state = .waiting
             s.requestID = e.request_id          // 非空 → 可在刘海点 允许/拒绝 回写
-            s.line = .init(tool: e.tool, text: "请求权限 · " + (e.tool_summary ?? ""))
+            if e.tool == "ExitPlanMode", let p = e.plan, !p.isEmpty {
+                s.plan = p                       // 计划模式：刘海里读计划直接批
+                s.line = .init(tool: nil, text: "计划待审批")
+            } else {
+                s.line = .init(tool: e.tool, text: "请求权限 · " + (e.tool_summary ?? ""))
+            }
 
         case "Notification":
             // 权限请求 or 空闲等待，靠文本判断
@@ -174,6 +190,8 @@ final class AppStore: ObservableObject {
         case "Stop":
             s.state = .done
             s.requestID = nil
+            s.questions = nil
+            s.plan = nil
             if !suppressBuddyXP { buddies.record(agent, .completion) }
             if let a = e.assistant, !a.isEmpty { s.line = .init(tool: nil, text: a) }
             schedulePrune(e.session)
@@ -221,6 +239,41 @@ final class AppStore: ObservableObject {
         onChange()
     }
 
+    // MARK: - 答题（AskUserQuestion 快捷回复，实验性）
+
+    /// 选第 idx 个选项：唤起对应终端 → 键入数字 → 回车。需要「辅助功能」权限。
+    func answer(_ session: Session, option idx: Int) {
+        guard let qs = session.questions, var s = byID[session.id] else { return }
+        jump(session)   // 先把终端唤到前台
+        let digit = "\(idx + 1)"
+        let script = """
+        delay 0.4
+        tell application "System Events"
+            keystroke "\(digit)"
+            delay 0.15
+            key code 36
+        end tell
+        """
+        let p = Process()
+        p.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
+        p.arguments = ["-e", script]
+        try? p.run()
+
+        // 推进向导：还有下一题就停在 waiting，答完转 running
+        if s.questionIndex + 1 < qs.count {
+            s.questionIndex += 1
+        } else {
+            s.questions = nil
+            s.questionIndex = 0
+            s.state = .running
+            s.line = .init(tool: nil, text: "已提交回答")
+        }
+        byID[session.id] = s
+        commit()
+        play(.select)
+        onChange()
+    }
+
     // MARK: - 会话过滤
 
     func hideSession(_ s: Session) { hiddenSessionIDs.insert(s.id); commit(); onChange() }
@@ -257,6 +310,7 @@ final class AppStore: ObservableObject {
         }
         if var s = byID[session.id] {
             s.requestID = nil
+            s.plan = nil
             s.state = allow ? .running : .idle
             s.line = .init(tool: nil, text: allow ? "已允许 ✓" : "已拒绝")
             s.lastUpdate = Date()

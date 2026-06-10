@@ -194,6 +194,12 @@ def main():
         "term": term,
         "term_bundle": term_bundle,
     }
+    # 计划模式：ExitPlanMode 的 plan 全文透传（刘海里读计划、直接批）
+    if tool == "ExitPlanMode" and isinstance(tinput, dict) and tinput.get("plan"):
+        evt["plan"] = str(tinput["plan"])[:4000]
+    # 提问：AskUserQuestion 的问题与选项透传（刘海里答题）
+    if tool == "AskUserQuestion" and isinstance(tinput, dict) and tinput.get("questions"):
+        evt["questions"] = tinput["questions"]
     evt = {k: v for k, v in evt.items() if v is not None}
 
     # 审批请求：阻塞等待刘海决定并回写（内部会自行写事件 + 退出）

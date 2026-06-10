@@ -75,6 +75,20 @@ struct IngestEvent: Codable {
     var request_id: String?           // PermissionRequest 关联 id（审批回写用）
     var term: String?                 // 终端显示名（iTerm2/Ghostty…）
     var term_bundle: String?          // 终端 bundle id（点击跳转用）
+    var plan: String?                 // ExitPlanMode 的计划全文
+    var questions: [QuestionSpec]?    // AskUserQuestion 的问题列表
+}
+
+/// AskUserQuestion 的问题结构（与 Claude Code tool_input 对齐）。
+struct QuestionSpec: Codable, Hashable {
+    var question: String
+    var header: String?
+    var multiSelect: Bool?
+    var options: [Option]
+    struct Option: Codable, Hashable {
+        var label: String
+        var description: String?
+    }
 }
 
 /// 渲染用的会话视图模型。
@@ -93,6 +107,9 @@ struct Session: Identifiable {
     var terminal: String = ""         // 终端显示名
     var bundleID: String? = nil       // 终端 bundle id（点击跳转）
     var cwd: String = ""              // 工作目录（会话过滤用）
+    var plan: String? = nil           // 待审批的计划全文（ExitPlanMode）
+    var questions: [QuestionSpec]? = nil  // 待回答的提问（AskUserQuestion）
+    var questionIndex: Int = 0        // 答题向导当前题号
 
     struct ActivityLine {
         var tool: String?             // 上色的工具名，如 "Bash"
