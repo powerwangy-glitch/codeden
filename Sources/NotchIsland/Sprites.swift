@@ -6,20 +6,20 @@ enum Sprites {
     struct Def { let palette: [Character: NSColor]; let rows: [String] }
 
     static let defs: [AgentKind: Def] = [
-        .claude: Def(palette: pal(["o":"#3a1d0a","a":"#d97757","b":"#f0a986","w":"#ffffff","k":"#2a1505","f":"#ff8a3d","4":"#ffd24d"]),
+        .claude: Def(palette: pal(["o":"#3a1d0a","a":"#d97757","b":"#f0a986","w":"#ffffff","k":"#2a1505","f":"#ff8a3d","4":"#ffd24d","h":"#ffd9c2"]),
             rows: ["................",".......44.......","......f44f......","......f44f......","....oooooooo....","...oaaaaaaaao...",
-                   "..oabbbbbbbbao..","..oabbbbbbbbao..","..oabwwbbwwbao..","..oabwkbbwkbao..","..oabbbbbbbbao..","..oabbbbbbbbao..",
+                   "..oahhbbbbbbao..","..oabbbbbbbbao..","..oabwwbbwwbao..","..oabwkbbwkbao..","..oabbbbbbbbao..","..oabbbbbbbbao..",
                    "...oaaaaaaaao...","....oooooooo....","................","................"]),
-        .codex: Def(palette: pal(["o":"#0a2e1a","e":"#10a37f","n":"#4fd6a6","g":"#7ee787","w":"#ffffff","k":"#062017"]),
+        .codex: Def(palette: pal(["o":"#0a2e1a","e":"#10a37f","n":"#4fd6a6","g":"#7ee787","w":"#ffffff","k":"#062017","h":"#a8f0d4"]),
             rows: ["................",".......g........","......ggg.......",".......g........","....oooooooo....","...oeeeeeeeeo...",
-                   "..oennnnnnnneo..","..oennnnnnnneo..","..oennwwwwnneo..","..oennwkkwnneo..","..oennwwwwnneo..","..oennnnnnnneo..",
+                   "..oehhnnnnnneo..","..oennnnnnnneo..","..oennwwwwnneo..","..oennwkkwnneo..","..oennwwwwnneo..","..oennnnnnnneo..",
                    "...oeeeeeeeeo...","....oooooooo....","................","................"]),
-        .gemini: Def(palette: pal(["o":"#0a1a3a","B":"#1a6dff","c":"#7fb4ff","i":"#5ea0ff","w":"#ffffff","k":"#06122e"]),
+        .gemini: Def(palette: pal(["o":"#0a1a3a","B":"#1a6dff","c":"#7fb4ff","i":"#5ea0ff","w":"#ffffff","k":"#06122e","h":"#c8e0ff"]),
             rows: ["................",".....i....i.....",".....i....i.....","....oooooooo....","...oBBBBBBBBo...","..oBccccccccBo..",
                    "..oBccccccccBo..","..oBcwwccwwcBo..","..oBckwccwkcBo..","..oBccccccccBo..","..oBccccccccBo..","...oBBBBBBBBo...",
                    "....oooooooo....","................","................","................"]),
-        .cursor: Def(palette: pal(["o":"#1f0a3a","P":"#a855f7","u":"#d0a6ff","w":"#ffffff","k":"#160630","a":"#ffffff"]),
-            rows: ["................","................","....oooooooo....","...oPPPPPPPPo...","..oPuuuuuuuuPo..","..oPuwwuuwwuPo..",
+        .cursor: Def(palette: pal(["o":"#1f0a3a","P":"#a855f7","u":"#d0a6ff","w":"#ffffff","k":"#160630","a":"#ffffff","h":"#ecdcff"]),
+            rows: ["................","................","....oooooooo....","...oPPPPPPPPo...","..oPhhuuuuuuPo..","..oPuwwuuwwuPo..",
                    "..oPuwkuukwuPo..","..oPuuuuuuuuPo..","..oPuauuuuuuPo..","..oPuaauuuuuPo..","..oPuaaauuuuPo..","..oPuuuuuuuuPo..",
                    "...oPPPPPPPPo...","....oooooooo....","................","................"]),
     ]

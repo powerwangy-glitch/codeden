@@ -197,7 +197,7 @@ struct QuotaHeader: View {
             if store.showQuota {
                 if store.quotas.isEmpty {
                     SpriteView(agent: .claude, size: 18)
-                    Text("额度读取中…").font(.system(size: 11)).foregroundColor(.niText3)
+                    Text("额度待采集 · 终端会话激活后显示").font(.system(size: 10.5)).foregroundColor(.niText3)
                 } else {
                     ForEach(store.quotas.indices, id: \.self) { i in
                         let q = store.quotas[i]

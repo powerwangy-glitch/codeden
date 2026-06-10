@@ -232,7 +232,9 @@ final class AppStore: ObservableObject {
             case .waiting:
                 play(.alert)
                 if autoExpandOnWaiting { expanded = true }
-            case .done:    play(.done)
+            case .done:
+                play(.done)
+                popupBriefly()
             default: break
             }
         }
@@ -320,6 +322,20 @@ final class AppStore: ObservableObject {
         }
         play(allow ? .select : .deny)
         onChange()
+    }
+
+    /// 完成提醒：自动展开 4 秒后收起（期间出现待审批则保持展开）
+    private var popupWork: DispatchWorkItem?
+    private func popupBriefly() {
+        guard !expanded else { return }
+        expanded = true
+        popupWork?.cancel()
+        let w = DispatchWorkItem { [weak self] in
+            guard let self else { return }
+            if self.pillState != .waiting { self.expanded = false }
+        }
+        popupWork = w
+        DispatchQueue.main.asyncAfter(deadline: .now() + 4, execute: w)
     }
 
     private func schedulePrune(_ id: String) {
