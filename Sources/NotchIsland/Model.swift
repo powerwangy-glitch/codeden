@@ -126,6 +126,50 @@ struct Session: Identifiable {
         if s < 3600 { return "\(s/60)m" }
         return "\(s/3600)h"
     }
+
+    var displayTitle: String {
+        let cleanProject = project == "—" || project == "/" ? "" : project
+        let cleanTask = task.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !cleanTask.isEmpty && !cleanProject.isEmpty { return "\(cleanProject) · \(cleanTask)" }
+        if !cleanTask.isEmpty { return cleanTask }
+        if !user.isEmpty { return String(user.split(separator: "\n").first.map(String.init)?.prefix(42) ?? user.prefix(42)) }
+        if !cleanProject.isEmpty { return cleanProject }
+        return agent.displayName
+    }
+
+    var displaySubtitle: String {
+        let cleanLine = line.text.trimmingCharacters(in: .whitespacesAndNewlines)
+        let cleanUser = user.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !cleanLine.isEmpty && cleanLine != "正在运行" { return cleanLine }
+        if !cleanUser.isEmpty {
+            let firstLine = cleanUser.split(separator: "\n").first.map(String.init) ?? cleanUser
+            if !displayTitle.contains(firstLine.prefix(18)) { return "你：\(cleanUser)" }
+        }
+        if !cleanLine.isEmpty { return cleanLine }
+        return state.label
+    }
+
+    var stageLabel: String {
+        switch state {
+        case .waiting: return "等待你处理"
+        case .running:
+            if let tool = line.tool, !tool.isEmpty { return "正在使用 \(tool)" }
+            return "正在执行"
+        case .compacting: return "压缩上下文"
+        case .done: return "刚完成"
+        case .idle: return "空闲"
+        }
+    }
+
+    var progressEstimate: Double {
+        switch state {
+        case .waiting: return 0.68
+        case .running: return line.tool == nil ? 0.26 : 0.48
+        case .compacting: return 0.82
+        case .done: return 1.0
+        case .idle: return 0.0
+        }
+    }
 }
 
 /// 单个额度窗口。

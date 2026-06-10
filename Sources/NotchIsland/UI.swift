@@ -83,10 +83,9 @@ struct IslandView: View {
             }
         }
         .onTapGesture {
-            // 收起态点击：只有一个会话直接跳转，多个则展开
+            // 收起态点击：先展开控制中心；具体跳转交给卡片点击。
             guard !store.expanded else { return }
-            if store.sessions.count == 1 { store.jump(store.sessions[0]) }
-            else { store.expanded = true }
+            store.expanded = true
         }
         .contextMenu {
             Button("设置…") { store.openSettings() }
@@ -192,29 +191,125 @@ struct PanelView: View {
             if store.notch.hasNotch { Color.clear.frame(height: store.notch.height) }
             QuotaHeader(store: store)
             StatusStrip(store: store)
-            if store.sessions.isEmpty {
-                VStack(spacing: 9) {
-                    SpriteView(agent: .claude, size: 30, sleeping: true)
-                    Text("z z Z").font(.system(size: 10, design: .monospaced)).foregroundColor(.niText3)
-                    Text("没有正在运行的 agent").font(.system(size: 12)).foregroundColor(.niText3)
-                }.padding(.vertical, 22).frame(maxWidth: .infinity)
+            if store.liveSessions.isEmpty {
+                IdlePanel(store: store)
             } else {
-                VStack(spacing: 6) {
-                    ForEach(Array(store.sessions.enumerated()), id: \.element.id) { idx, s in
-                        ItemRow(session: s,
-                                onDecide: { allow in store.decide(s, allow: allow) },
-                                onJump: { store.jump(s) },
-                                onHide: { store.hideSession(s) },
-                                onBlockDir: { store.blockDir(s) },
-                                onAnswer: { i in store.answer(s, option: i) })
-                    }
-                }
-                .padding(.horizontal, 8)
+                WorkPanel(store: store)
             }
             Color.clear.frame(height: 8)
         }
         .frame(width: CGFloat(store.panelWidth), alignment: .top)
         .fixedSize(horizontal: false, vertical: true)
+    }
+}
+
+struct WorkPanel: View {
+    @ObservedObject var store: AppStore
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            PanelSectionTitle(title: "正在工作", detail: "\(store.liveSessions.count) 个任务")
+            ForEach(store.liveSessions) { s in
+                ItemRow(session: s,
+                        onDecide: { allow in store.decide(s, allow: allow) },
+                        onJump: { store.jump(s) },
+                        onHide: { store.hideSession(s) },
+                        onBlockDir: { store.blockDir(s) },
+                        onAnswer: { i in store.answer(s, option: i) })
+            }
+            if !store.recentDoneSessions.isEmpty {
+                PanelSectionTitle(title: "刚完成", detail: nil)
+                    .padding(.top, 4)
+                ForEach(store.recentDoneSessions.prefix(2)) { s in
+                    ItemRow(session: s,
+                            compact: true,
+                            onJump: { store.jump(s) },
+                            onHide: { store.hideSession(s) },
+                            onBlockDir: { store.blockDir(s) })
+                }
+            }
+        }
+        .padding(.horizontal, 8)
+    }
+}
+
+struct IdlePanel: View {
+    @ObservedObject var store: AppStore
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .center, spacing: 12) {
+                SpriteView(agent: store.lastActiveAgent, size: 30, sleeping: true)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("现在没有 agent 在跑")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(.niText)
+                    Text(idleHint)
+                        .font(.system(size: 11.5))
+                        .foregroundColor(.niText3)
+                        .lineLimit(2)
+                }
+                Spacer(minLength: 8)
+                Button { store.openSettings() } label: {
+                    Image(systemName: "slider.horizontal.3")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(.niText2)
+                        .frame(width: 30, height: 30)
+                }
+                .buttonStyle(.plain)
+                .help("设置")
+            }
+            .padding(14)
+            .background(Color.white.opacity(0.035))
+            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+
+            if !store.recentDoneSessions.isEmpty {
+                PanelSectionTitle(title: "最近完成", detail: nil)
+                ForEach(store.recentDoneSessions.prefix(2)) { s in
+                    ItemRow(session: s,
+                            compact: true,
+                            onJump: { store.jump(s) },
+                            onHide: { store.hideSession(s) },
+                            onBlockDir: { store.blockDir(s) })
+                }
+            } else if !store.recentIdleSessions.isEmpty {
+                PanelSectionTitle(title: "最近会话", detail: nil)
+                ForEach(store.recentIdleSessions.prefix(2)) { s in
+                    ItemRow(session: s,
+                            compact: true,
+                            onJump: { store.jump(s) },
+                            onHide: { store.hideSession(s) },
+                            onBlockDir: { store.blockDir(s) })
+                }
+            }
+        }
+        .padding(.horizontal, 8)
+        .padding(.bottom, 2)
+    }
+
+    private var idleHint: String {
+        if store.showQuota && !store.quotas.isEmpty { return "额度和最近会话还在这里，开跑后会自动切到任务视图。" }
+        return "开一个 Claude Code 或 Codex 任务后，这里会自动切到任务视图。"
+    }
+}
+
+struct PanelSectionTitle: View {
+    let title: String
+    let detail: String?
+
+    var body: some View {
+        HStack(spacing: 7) {
+            Text(title)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundColor(.niText2)
+            if let detail {
+                Text(detail)
+                    .font(.system(size: 10.5))
+                    .foregroundColor(.niText3)
+            }
+            Spacer()
+        }
+        .padding(.horizontal, 5)
     }
 }
 
@@ -326,6 +421,7 @@ struct QuotaHeader: View {
 
 struct ItemRow: View {
     let session: Session
+    var compact: Bool = false
     var onDecide: (Bool) -> Void = { _ in }
     var onJump: () -> Void = {}
     var onHide: () -> Void = {}
@@ -342,11 +438,11 @@ struct ItemRow: View {
             }
             .frame(width: 40, alignment: .leading)
 
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: compact ? 4 : 7) {
                 // 第一行：标题 + 标签 + 时间
                 HStack(spacing: 8) {
-                    Text(session.task.isEmpty ? session.project : "\(session.project) · \(session.task)")
-                        .font(.system(size: 13).weight(.semibold)).foregroundColor(.niText)
+                    Text(session.displayTitle)
+                        .font(.system(size: compact ? 12.5 : 13.5).weight(.semibold)).foregroundColor(.niText)
                         .lineLimit(1).truncationMode(.tail)
                     Spacer(minLength: 6)
                     if !session.terminal.isEmpty {
@@ -357,15 +453,18 @@ struct ItemRow: View {
                     agentBadge(session.agent)
                     Text(session.elapsedLabel).font(.system(size: 11)).foregroundColor(.niText3)
                 }
-                // 第二行：你说的话
-                if !session.user.isEmpty {
-                    Text("你：\(session.user)").font(.system(size: 12)).foregroundColor(.niText2)
+                if !compact {
+                    ProgressLine(session: session)
+                }
+                // 第二行：任务摘要
+                if !session.displaySubtitle.isEmpty {
+                    Text(session.displaySubtitle).font(.system(size: compact ? 11.2 : 12)).foregroundColor(.niText2)
                         .lineLimit(1).truncationMode(.tail)
                 }
                 // 第三行：当前动作 / 审批 / 提问
-                activity
+                if !compact { activity }
                 // 计划审批（ExitPlanMode）：读计划 → 批准/驳回
-                if let plan = session.plan, session.requestID != nil, session.state == .waiting {
+                if !compact, let plan = session.plan, session.requestID != nil, session.state == .waiting {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("📋 计划").font(.system(size: 11).weight(.semibold)).foregroundColor(.niWarn)
                         ScrollView {
@@ -388,7 +487,7 @@ struct ItemRow: View {
                     .padding(.top, 6)
                 }
                 // 答题向导（AskUserQuestion）
-                else if let qs = session.questions, session.state == .waiting, session.questionIndex < qs.count {
+                else if !compact, let qs = session.questions, session.state == .waiting, session.questionIndex < qs.count {
                     let q = qs[session.questionIndex]
                     VStack(alignment: .leading, spacing: 7) {
                         HStack {
@@ -425,7 +524,7 @@ struct ItemRow: View {
                     .padding(.top, 6)
                 }
                 // 审批按钮（仅在等待你审批且可回写时出现）
-                else if session.requestID != nil, session.state == .waiting {
+                else if !compact, session.requestID != nil, session.state == .waiting {
                     HStack(spacing: 18) {
                         Button { onDecide(true) } label: {
                             Text("允许").font(.system(size: 12.5).weight(.semibold)).foregroundColor(.niDone)
@@ -438,7 +537,7 @@ struct ItemRow: View {
                 }
             }
         }
-        .padding(.horizontal, 13).padding(.vertical, 12)
+        .padding(.horizontal, 13).padding(.vertical, compact ? 10 : 12)
         .background(RoundedRectangle(cornerRadius: 13, style: .continuous)
             .fill(Color.white.opacity(hovering ? 0.065 : 0.035)))
         .contentShape(Rectangle())
@@ -485,5 +584,43 @@ struct ItemRow: View {
             .padding(.horizontal, 7).padding(.vertical, 2)
             .background(c.opacity(b.kind == .auto ? 0.14 : 0.08)).foregroundColor(c)
             .clipShape(RoundedRectangle(cornerRadius: 6))
+    }
+}
+
+struct ProgressLine: View {
+    let session: Session
+
+    var body: some View {
+        HStack(spacing: 8) {
+            HStack(spacing: 5) {
+                Circle()
+                    .fill(session.state.dotColor)
+                    .frame(width: 6, height: 6)
+                Text(session.stageLabel)
+                    .font(.system(size: 10.8, weight: .medium))
+                    .foregroundColor(session.state.dotColor)
+                    .lineLimit(1)
+            }
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    Capsule().fill(Color.white.opacity(0.07))
+                    Capsule().fill(session.state.dotColor.opacity(0.8))
+                        .frame(width: max(8, geo.size.width * session.progressEstimate))
+                }
+            }
+            .frame(height: 5)
+            Text(progressText)
+                .font(.system(size: 10.5, design: .rounded))
+                .foregroundColor(.niText3)
+                .frame(width: 34, alignment: .trailing)
+        }
+    }
+
+    private var progressText: String {
+        if session.state == .waiting { return "待办" }
+        if session.state == .done { return "完成" }
+        if session.state == .idle { return "空闲" }
+        if session.state == .compacting { return "压缩" }
+        return session.line.tool == nil ? "执行" : "工具"
     }
 }

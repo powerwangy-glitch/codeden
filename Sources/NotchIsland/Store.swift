@@ -125,6 +125,9 @@ final class AppStore: ObservableObject {
     var waitingCount: Int { sessions.filter { $0.state == .waiting }.count }
     var doneCount: Int { sessions.filter { $0.state == .done }.count }
     var anyQuotaDanger: Bool { quotas.contains { $0.danger } }
+    var liveSessions: [Session] { sessions.filter { $0.state == .waiting || $0.state.isBusy } }
+    var recentDoneSessions: [Session] { sessions.filter { $0.state == .done } }
+    var recentIdleSessions: [Session] { sessions.filter { $0.state == .idle } }
 
     private var byID: [String: Session] = [:]
     private var pruneTimers: [String: Timer] = [:]
@@ -179,6 +182,23 @@ final class AppStore: ObservableObject {
             if !meta.title.isEmpty, s.task.isEmpty {
                 s.task = String(meta.title.prefix(36))
             }
+        }
+        if let meta = codexDesktopMeta(for: e.session) {
+            if s.cwd.isEmpty { s.cwd = meta.cwd }
+            if s.project == "—" || s.project == "/" || s.project.isEmpty {
+                let project = URL(fileURLWithPath: meta.cwd).lastPathComponent
+                s.project = project.isEmpty ? "Codex" : project
+            }
+            if !meta.title.isEmpty, s.task.isEmpty || s.task == "Codex" {
+                s.task = String(meta.title.prefix(36))
+            }
+            if (s.user.isEmpty || s.user == "Codex"), !meta.preview.isEmpty {
+                s.user = meta.preview
+            }
+        }
+        if s.task.isEmpty, let u = e.user, !u.isEmpty, u.lowercased() != agent.displayName.lowercased() {
+            let firstLine = u.split(separator: "\n").first.map(String.init) ?? u
+            s.task = String(firstLine.prefix(36))
         }
         s.lastUpdate = Date()
 
@@ -422,6 +442,26 @@ final class AppStore: ObservableObject {
         var title: String?
     }
 
+    private func codexDesktopMeta(for sessionID: String) -> (title: String, cwd: String, preview: String)? {
+        guard sessionID.hasPrefix("codex-") else { return nil }
+        let threadID = String(sessionID.dropFirst(6))
+        guard threadID.rangeOfCharacter(from: CharacterSet(charactersIn: "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_-").inverted) == nil else {
+            return nil
+        }
+        let db = home.appendingPathComponent(".codex/state_5.sqlite").path
+        guard FileManager.default.fileExists(atPath: db) else { return nil }
+        let query = """
+        select coalesce(title,'') || char(31) || coalesce(cwd,'') || char(31) || substr(coalesce(preview,''), 1, 220)
+        from threads where id = '\(threadID)' limit 1;
+        """
+        let parts = runSQLite(db, query)
+            .trimmingCharacters(in: .newlines)
+            .split(separator: Character(UnicodeScalar(31)), omittingEmptySubsequences: false)
+            .map(String.init)
+        guard parts.count >= 3 else { return nil }
+        return (parts[0], parts[1], parts[2])
+    }
+
     private func jumpToTerminalTTY(_ session: Session, tty: String) -> Bool {
         guard let bid = session.bundleID, !bid.isEmpty else { return false }
         switch bid {
@@ -453,6 +493,23 @@ final class AppStore: ObservableObject {
         } catch {
             return false
         }
+    }
+
+    private func runSQLite(_ db: String, _ query: String) -> String {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/sqlite3")
+        process.arguments = [db, query]
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = Pipe()
+        do {
+            try process.run()
+            process.waitUntilExit()
+        } catch {
+            return ""
+        }
+        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        return String(data: data, encoding: .utf8) ?? ""
     }
 
     private func terminalJumpScript(_ tty: String) -> String {

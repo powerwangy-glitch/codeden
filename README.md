@@ -55,8 +55,14 @@ Claude Code ──hooks──▶ bridge/notch-bridge.py ──追加──▶ ~/
 ## 下载安装
 
 最新版本见 [Releases](https://github.com/powerwangy-glitch/codeden/releases)：
-下载 `CodeDen-v0.1.4-mac.zip` → 解压 → 把 `NotchIsland.app` 拖进 `/Applications` → 打开 →
+下载 `CodeDen-v0.1.5-mac.zip` → 解压 → 把 `NotchIsland.app` 拖进 `/Applications` → 打开 →
 跟新人引导一键接入 Claude Code。（首次打开若被 Gatekeeper 拦：右键 → 打开。）
+
+## v0.1.5 更新
+
+- 展开态重新梳理为两种场景：有任务时显示“正在工作”任务台；无任务时显示空闲面板和最近会话。
+- 任务卡片增加阶段进度、当前动作、真实标题优先级，减少 `/`、`你：Codex` 这类占位信息。
+- 完成/空闲会话改为轻量展示，不再和运行中任务混在一起抢注意力。
 
 ## v0.1.4 更新
 
