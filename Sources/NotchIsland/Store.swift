@@ -43,6 +43,37 @@ final class AppStore: ObservableObject {
     @Published var hoverDelay: Double = (d.object(forKey: "hoverDelay") as? Double) ?? 0 {
         didSet { Self.d.set(hoverDelay, forKey: "hoverDelay") }
     }
+    /// 额度显示：auto=跟随最近活跃 agent；或固定 claude/codex
+    @Published var quotaProvider: String = (d.object(forKey: "quotaProvider") as? String) ?? "auto" {
+        didSet { Self.d.set(quotaProvider, forKey: "quotaProvider") }
+    }
+    private(set) var lastActiveAgent: AgentKind = .claude
+
+    /// 顶栏实际展示的额度：跟随/固定 + 危险插队
+    var displayQuotas: [AgentQuota] {
+        guard !quotas.isEmpty else { return [] }
+        var picked: [AgentQuota]
+        if quotaProvider != "auto", let fixed = quotas.first(where: { $0.agent.rawValue == quotaProvider }) {
+            picked = [fixed]
+        } else {
+            let active = quotas.first(where: { $0.agent == lastActiveAgent }) ?? quotas[0]
+            picked = [active]
+        }
+        // 危险插队：其他 agent 额度 ≥90% 必须露出
+        for q in quotas where q.danger && !picked.contains(where: { $0.agent == q.agent }) {
+            picked.append(q)
+        }
+        return picked
+    }
+
+    /// 点击额度区：auto → claude → codex → auto 循环
+    func cycleQuotaProvider() {
+        let order = ["auto", "claude", "codex"]
+        let i = order.firstIndex(of: quotaProvider) ?? 0
+        quotaProvider = order[(i + 1) % order.count]
+        play(.select)
+    }
+
     /// 会话过滤：被屏蔽的目录片段（持久）+ 本次隐藏的会话（临时）
     @Published var blockedDirs: [String] = (d.object(forKey: "blockedDirs") as? [String]) ?? [] {
         didSet { Self.d.set(blockedDirs, forKey: "blockedDirs"); commit() }
@@ -126,6 +157,7 @@ final class AppStore: ObservableObject {
             badges: [], lastUpdate: Date(), subagents: 0
         )
         s.agent = agent
+        if agent != .unknown { lastActiveAgent = agent }
         if let p = e.project { s.project = p }
         if let sub = e.subagents { s.subagents = max(0, sub) }
         if let t = e.term, !t.isEmpty { s.terminal = t }

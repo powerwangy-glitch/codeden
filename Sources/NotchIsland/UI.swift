@@ -186,11 +186,17 @@ struct QuotaHeader: View {
     @ObservedObject var store: AppStore
     var body: some View {
         HStack(spacing: 0) {
-            leftGroup
+            leftGroupTappable
             Spacer(minLength: 10)
             rightGroup
         }
         .padding(.horizontal, 16).padding(.vertical, 10)
+    }
+
+    // 点击额度区：自动 → 固定Claude → 固定Codex 循环
+    @ViewBuilder private var leftGroupTappable: some View {
+        leftGroup.contentShape(Rectangle()).onTapGesture { store.cycleQuotaProvider() }
+            .help("点击切换额度显示：自动(跟随会话) / 固定 Claude / 固定 Codex")
     }
 
     @ViewBuilder private var leftGroup: some View {
@@ -200,14 +206,21 @@ struct QuotaHeader: View {
                     SpriteView(agent: .claude, size: 20)
                     Text("额度待采集 · 终端会话激活后显示").font(.system(size: 10.5)).foregroundColor(.niText3)
                 } else {
-                    ForEach(store.quotas.indices, id: \.self) { i in
-                        let q = store.quotas[i]
+                    let shown = store.displayQuotas
+                    ForEach(shown.indices, id: \.self) { i in
+                        let q = shown[i]
                         HStack(spacing: 6) {
-                            SpriteView(agent: q.agent, size: 18)   // 每个额度配对应 agent 图标
+                            SpriteView(agent: q.agent, size: 18)
                             quotaSeg(q.fiveHour)
                             Text("|").foregroundColor(.niText3).opacity(0.45)
                             quotaSeg(q.sevenDay)
                         }
+                    }
+                    if store.quotaProvider != "auto" {
+                        Text("固定").font(.system(size: 9)).foregroundColor(.niText3)
+                            .padding(.horizontal, 5).padding(.vertical, 1)
+                            .background(Color.white.opacity(0.07))
+                            .clipShape(Capsule())
                     }
                 }
             } else {

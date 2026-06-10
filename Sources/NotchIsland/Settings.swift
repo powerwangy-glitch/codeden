@@ -108,6 +108,15 @@ struct SettingsView: View {
                 VStack(alignment: .leading, spacing: 10) {
                     Toggle("开机自启", isOn: $store.launchAtLogin)
                     Toggle("显示额度", isOn: $store.showQuota)
+                    if store.showQuota {
+                        Picker("额度显示", selection: $store.quotaProvider) {
+                            Text("自动（跟随会话）").tag("auto")
+                            Text("固定 Claude").tag("claude")
+                            Text("固定 Codex").tag("codex")
+                        }
+                        Text("两个 agent 同时在用时，自动模式显示最近活跃的那个；任一额度 ≥90% 会强制露出。")
+                            .font(.caption2).foregroundStyle(.tertiary)
+                    }
                     Toggle("需要审批时自动展开", isOn: $store.autoExpandOnWaiting)
                     HStack {
                         Text("面板宽度 \(Int(store.panelWidth))")
