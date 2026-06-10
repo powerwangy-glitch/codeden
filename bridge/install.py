@@ -88,13 +88,32 @@ def setup_codex():
     if "notch-codex-notify" in body:
         print("Codex notify 已安装，跳过")
         return
-    if "\nnotify" in body or body.startswith("notify"):
-        print("⚠️ ~/.codex/config.toml 已有其他 notify（可能是 Vibe Island），不覆盖，跳过 Codex 接入")
-        return
-    shutil.copy2(cfg, cfg + ".notch-backup") if os.path.exists(cfg) else None
-    with open(cfg, "a") as f:
-        f.write('\n# NotchIsland (码岛) Codex 桥接\nnotify = ["python3", "%s"]\n' % dst)
-    print("已安装 Codex notify 桥接（备份: config.toml.notch-backup）")
+    import re
+    m = re.search(r"^notify\s*=\s*(\[.*?\])\s*$", body, re.M)
+    if os.path.exists(cfg):
+        shutil.copy2(cfg, cfg + ".notch-backup")
+    chain = os.path.join(BIN_DIR, "codex-notify-chain.sh")
+    if m:
+        # 已有 notify（如 Codex Computer Use）→ 链式：先原命令，再码岛
+        try:
+            orig = json.loads(m.group(1))
+        except Exception:
+            print("⚠️ 无法解析现有 notify，跳过"); return
+        orig_cmd = " ".join("'%s'" % a.replace("'", "'\\''") for a in orig)
+        with open(chain, "w") as f:
+            f.write('#!/bin/bash\n# 码岛链式 notify：保留原有 notify + 码岛桥接\n'
+                    '%s "$@" &\n'
+                    '/usr/bin/env python3 "%s" "$@" &\nwait\n' % (orig_cmd, dst))
+        os.chmod(chain, 0o755)
+        body = re.sub(r"^notify\s*=\s*\[.*?\]\s*$",
+                      'notify = ["%s"]' % chain, body, count=1, flags=re.M)
+        with open(cfg, "w") as f:
+            f.write(body)
+        print("已安装链式 Codex notify（原 notify 保留：%s）" % orig[0].split("/")[-1])
+    else:
+        with open(cfg, "a") as f:
+            f.write('\n# NotchIsland (码岛) Codex 桥接\nnotify = ["python3", "%s"]\n' % dst)
+        print("已安装 Codex notify 桥接（备份: config.toml.notch-backup）")
 
 
 def main():

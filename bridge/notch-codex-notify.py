@@ -20,8 +20,8 @@ def main():
         n = json.loads(sys.argv[-1])
     except Exception:
         return
-    if n.get("type") != "agent-turn-complete":
-        return
+    if "turn" not in str(n.get("type", "")):
+        return   # 兼容 agent-turn-complete / turn-ended
     user = ""
     msgs = n.get("input-messages") or []
     if msgs:

@@ -116,10 +116,11 @@ struct PillView: View {
 
     // 左翼：只放一个图标——首个会话的精灵（休息时灰睡）。多会话不堆叠，让数字说话。
     @ViewBuilder private var leftWing: some View {
-        if store.pillState == .rest {
-            SpriteView(agent: .claude, size: 17, sleeping: true)
-        } else if let first = store.sessions.first {
+        if let first = store.sessions.first {
+            // 有会话就保持彩色（等待输入也只是「歇着」，不是死灰）
             SpriteView(agent: first.agent, size: 17, running: first.state.isBusy)
+        } else {
+            SpriteView(agent: .claude, size: 17, sleeping: true)
         }
     }
 
@@ -196,13 +197,13 @@ struct QuotaHeader: View {
         HStack(spacing: 12) {
             if store.showQuota {
                 if store.quotas.isEmpty {
-                    SpriteView(agent: .claude, size: 18)
+                    SpriteView(agent: .claude, size: 20)
                     Text("额度待采集 · 终端会话激活后显示").font(.system(size: 10.5)).foregroundColor(.niText3)
                 } else {
                     ForEach(store.quotas.indices, id: \.self) { i in
                         let q = store.quotas[i]
                         HStack(spacing: 6) {
-                            SpriteView(agent: q.agent, size: 16)   // 每个额度配对应 agent 图标
+                            SpriteView(agent: q.agent, size: 18)   // 每个额度配对应 agent 图标
                             quotaSeg(q.fiveHour)
                             Text("|").foregroundColor(.niText3).opacity(0.45)
                             quotaSeg(q.sevenDay)
@@ -210,7 +211,7 @@ struct QuotaHeader: View {
                     }
                 }
             } else {
-                SpriteView(agent: .claude, size: 18)
+                SpriteView(agent: .claude, size: 20)
             }
         }
     }
@@ -247,7 +248,7 @@ struct ItemRow: View {
             // 左侧精灵簇（主 + 子 agent）
             HStack(spacing: 2) {
                 ForEach(0...session.subagents, id: \.self) { _ in
-                    SpriteView(agent: session.agent, size: 17, running: session.state.isBusy)
+                    SpriteView(agent: session.agent, size: 20, running: session.state.isBusy)
                 }
             }
             .frame(width: 40, alignment: .leading)

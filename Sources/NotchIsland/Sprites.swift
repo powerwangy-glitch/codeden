@@ -75,8 +75,8 @@ struct SpriteView: View {
             .interpolation(.none)
             .resizable()
             .frame(width: size, height: size)
-            .saturation(sleeping ? 0 : 1)
-            .brightness(sleeping ? -0.15 : 0)
+            .saturation(sleeping ? 0.35 : 1)
+            .brightness(sleeping ? -0.08 : 0)
             .offset(y: (running && bob) ? -2 : 0)
             .onAppear {
                 guard running else { return }
