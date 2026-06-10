@@ -77,10 +77,11 @@ struct SpriteView: View {
             .frame(width: size, height: size)
             .saturation(sleeping ? 0.35 : 1)
             .brightness(sleeping ? -0.08 : 0)
-            .offset(y: (running && bob) ? -2 : 0)
+            .offset(y: (running && bob) ? -1 : 0)
             .onAppear {
                 guard running else { return }
-                withAnimation(.easeInOut(duration: 0.45).repeatForever(autoreverses: true)) { bob = true }
+                // 慢节奏轻起伏：像呼吸，不像蹦迪
+                withAnimation(.easeInOut(duration: 1.1).repeatForever(autoreverses: true)) { bob = true }
             }
     }
 }
