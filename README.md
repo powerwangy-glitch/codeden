@@ -55,8 +55,14 @@ Claude Code ──hooks──▶ bridge/notch-bridge.py ──追加──▶ ~/
 ## 下载安装
 
 最新版本见 [Releases](https://github.com/powerwangy-glitch/codeden/releases)：
-下载 `CodeDen-v0.1.7-mac.zip` → 解压 → 把 `NotchIsland.app` 拖进 `/Applications` → 打开 →
+下载 `CodeDen-v0.1.8-mac.zip` → 解压 → 把 `NotchIsland.app` 拖进 `/Applications` → 打开 →
 跟新人引导一键接入 Claude Code。（首次打开若被 Gatekeeper 拦：右键 → 打开。）
+
+## v0.1.8 更新
+
+- 修复 Claude Desktop 定时任务 / 权限已允许后没有后续事件时，码岛一直显示 `agent 正在执行` 的问题。
+- Claude 历史会话恢复时会清理审批、计划、问题和子任务临时状态，避免旧会话误报为运行中。
+- 对长时间无新事件的 Claude 运行态增加自动回落空闲兜底，减少卡死但保留真实长任务展示。
 
 ## v0.1.7 更新
 

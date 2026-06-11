@@ -146,10 +146,36 @@ final class AppStore: ObservableObject {
     }
 
     private func tick() {
+        var changed = false
+
+        for (id, var s) in byID where shouldAutoIdle(s) {
+            s.state = .idle
+            s.requestID = nil
+            s.questions = nil
+            s.questionIndex = 0
+            s.plan = nil
+            s.subagents = 0
+            s.line = .init(tool: nil, text: "已空闲")
+            s.lastUpdate = Date()
+            byID[id] = s
+            changed = true
+        }
+
         let stale = byID.values.filter { $0.state == .idle && Date().timeIntervalSince($0.lastUpdate) > 1800 }
-        for s in stale { remove(s.id) }
+        for s in stale {
+            remove(s.id)
+            changed = true
+        }
         commit()          // 重发 sessions → elapsedLabel 重算
-        if !stale.isEmpty { onChange() }
+        if changed { onChange() }
+    }
+
+    private func shouldAutoIdle(_ s: Session) -> Bool {
+        guard s.agent == .claude, s.state == .running || s.state == .compacting else { return false }
+        let age = Date().timeIntervalSince(s.lastUpdate)
+        if s.line.text == "已允许 ✓" { return age > 90 }
+        if s.user.contains("<scheduled-task") || s.task.contains("<scheduled-task") { return age > 10 * 60 }
+        return age > 30 * 60
     }
 
     // MARK: - 事件消费（状态机核心）
@@ -284,6 +310,11 @@ final class AppStore: ObservableObject {
 
         case "SessionStart":
             s.state = .idle
+            s.requestID = nil
+            s.questions = nil
+            s.questionIndex = 0
+            s.plan = nil
+            s.subagents = 0
             s.line = .init(tool: nil, text: "等待输入")
 
         case "SessionEnd":
