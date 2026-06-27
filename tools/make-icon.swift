@@ -1,14 +1,14 @@
-// 生成 NotchIsland 的像素风 App 图标（.iconset PNG 序列）。
+// 生成码岛 CodeDen 的像素风 App 图标（.iconset PNG 序列）。
 // 用法： swift tools/make-icon.swift  → 输出到 icon/AppIcon.iconset/，再由 build 脚本跑 iconutil。
 import AppKit
 
-let claude: [String] = [
+let codeden: [String] = [
   "................",".......44.......","......f44f......","......f44f......","....oooooooo....","...oaaaaaaaao...",
   "..oabbbbbbbbao..","..oabbbbbbbbao..","..oabwwbbwwbao..","..oabwkbbwkbao..","..oabbbbbbbbao..","..oabbbbbbbbao..",
   "...oaaaaaaaao...","....oooooooo....","................","................"]
 let pal: [Character: NSColor] = [
-  "o": hex("3a1d0a"), "a": hex("d97757"), "b": hex("f0a986"), "w": .white,
-  "k": hex("2a1505"), "f": hex("ff8a3d"), "4": hex("ffd24d")]
+  "o": hex("063b31"), "a": hex("10a37f"), "b": hex("7ee7c5"), "w": .white,
+  "k": hex("05201b"), "f": hex("57e284"), "4": hex("caffdf")]
 
 func hex(_ s: String) -> NSColor {
   var v: UInt64 = 0; Scanner(string: s).scanHexInt64(&v)
@@ -23,11 +23,11 @@ func drawIcon(_ S: CGFloat) -> NSBitmapImageRep {
   NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: rep)
   let ctx = NSGraphicsContext.current!.cgContext
 
-  // 圆角方形背景 + 竖向渐变（深空蓝黑）
+  // 圆角方形背景 + 竖向渐变（码岛黑绿）
   let r = S * 0.2237
   let path = NSBezierPath(roundedRect: NSRect(x: 0, y: 0, width: S, height: S), xRadius: r, yRadius: r)
   path.addClip()
-  let grad = NSGradient(colors: [hex("222838"), hex("0c0e12")])!
+  let grad = NSGradient(colors: [hex("07241f"), hex("050607")])!
   grad.draw(in: NSRect(x: 0, y: 0, width: S, height: S), angle: -90)
 
   // 顶部刘海意象：一条贴顶的黑色圆角条
@@ -36,13 +36,13 @@ func drawIcon(_ S: CGFloat) -> NSBitmapImageRep {
                            xRadius: nH*0.45, yRadius: nH*0.45)
   hex("000000").setFill(); notch.fill()
 
-  // 居中的像素吉祥物
+  // 居中的 CodeDen 绿色像素吉祥物
   ctx.interpolationQuality = .none
   let side = S * 0.6
   let cell = side / 16
   let ox = (S - side) / 2
   let oy = (S - side) / 2 - S * 0.04
-  for (row, line) in claude.enumerated() {
+  for (row, line) in codeden.enumerated() {
     for (col, ch) in line.enumerated() {
       guard let c = pal[ch] else { continue }
       c.setFill()

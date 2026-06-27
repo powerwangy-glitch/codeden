@@ -28,7 +28,7 @@
 Claude Code ──hooks──▶ bridge/notch-bridge.py ──追加──▶ ~/.notch-island/events.jsonl
                                                               │ 实时 tail (DispatchSource)
                                                               ▼
-                                                       NotchIsland.app (Swift/SwiftUI)
+                                                       码岛.app (Swift/SwiftUI)
                                                        刘海窗口 + 状态机渲染
 额度： Claude statusLine .rate_limits ─▶ cache/rl.json ┐
        Codex OpenAI app-server 用量    ─▶ cache/*.json ┴▶ QuotaReader
@@ -55,8 +55,14 @@ Claude Code ──hooks──▶ bridge/notch-bridge.py ──追加──▶ ~/
 ## 下载安装
 
 最新版本见 [Releases](https://github.com/powerwangy-glitch/codeden/releases)：
-下载 `CodeDen-v0.1.8-mac.zip` → 解压 → 把 `NotchIsland.app` 拖进 `/Applications` → 打开 →
+下载 `CodeDen-v0.1.9-mac.zip` → 解压 → 把 `码岛.app` 拖进 `/Applications` → 打开 →
 跟新人引导一键接入 Claude Code。（首次打开若被 Gatekeeper 拦：右键 → 打开。）
+
+## v0.1.9 更新
+
+- 发布包里的 App 名称统一为 `码岛.app`，不再显示旧的 `NotchIsland.app`。
+- 重新生成 CodeDen 风格绿色像素图标，避免旧 NotchIsland 图标残留。
+- 官网和下载说明同步更新到 v0.1.9。
 
 ## v0.1.8 更新
 
@@ -117,8 +123,8 @@ swift build
 
 打包成正式 .app（可日常使用）：
 ```bash
-./build-app.sh                    # 生成 dist/NotchIsland.app（含桥接脚本，ad-hoc 签名）
-open dist/NotchIsland.app
+./build-app.sh                    # 生成 dist/码岛.app（含桥接脚本，ad-hoc 签名）
+open dist/码岛.app
 # 建议拖到 /Applications 后再开启「开机自启」更稳
 ```
 

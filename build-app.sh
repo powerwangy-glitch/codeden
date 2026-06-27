@@ -1,12 +1,12 @@
 #!/bin/bash
-# 把 SwiftPM 可执行打包成可日常使用的 NotchIsland.app
+# 把 SwiftPM 可执行打包成可日常使用的「码岛.app」
 set -e
 cd "$(dirname "$0")"
 
 echo "▶ 编译 release…"
 swift build -c release
 
-APP="dist/NotchIsland.app"
+APP="dist/码岛.app"
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources/bridge"
 
@@ -19,10 +19,10 @@ cp bridge/notch-bridge.py \
    "$APP/Contents/Resources/bridge/"
 chmod +x "$APP/Contents/Resources/bridge/"*.py
 
-# 图标：没有就现生成
-if [ ! -f icon/AppIcon.icns ]; then
-  swift tools/make-icon.swift && iconutil -c icns icon/AppIcon.iconset -o icon/AppIcon.icns
-fi
+# 图标：每次重新生成，避免旧 NotchIsland 图标混进发布包
+rm -rf icon/AppIcon.iconset icon/AppIcon.icns
+swift tools/make-icon.swift
+iconutil -c icns icon/AppIcon.iconset -o icon/AppIcon.icns
 cp icon/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
 
 cat > "$APP/Contents/Info.plist" <<'PLIST'
@@ -36,8 +36,8 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
   <key>CFBundleExecutable</key>      <string>NotchIsland</string>
   <key>CFBundleIconFile</key>        <string>AppIcon</string>
   <key>CFBundlePackageType</key>     <string>APPL</string>
-  <key>CFBundleShortVersionString</key> <string>0.1.8</string>
-  <key>CFBundleVersion</key>         <string>9</string>
+  <key>CFBundleShortVersionString</key> <string>0.1.9</string>
+  <key>CFBundleVersion</key>         <string>10</string>
   <key>LSMinimumSystemVersion</key>  <string>14.0</string>
   <key>LSUIElement</key>             <true/>
   <key>NSHighResolutionCapable</key> <true/>
