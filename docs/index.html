@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>码岛 CodeDen - Mac 刘海上的 AI 控制中心</title>
+  <meta name="description" content="码岛 CodeDen 把 MacBook 刘海变成 Codex 和 Claude Code 的实时控制中心，显示运行、审批、完成、额度和最近会话。">
+  <meta property="og:title" content="码岛 CodeDen">
+  <meta property="og:description" content="把 MacBook 刘海变成 AI coding agent 的实时控制中心。">
+  <meta property="og:image" content="assets/hero.png">
+  <meta property="og:type" content="website">
+  <link rel="icon" href="assets/hero.png">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="#top" aria-label="码岛 CodeDen 首页">
+      <span class="brand-mark">▣</span>
+      <span>码岛 CodeDen</span>
+    </a>
+    <nav class="nav">
+      <a href="#why">为什么</a>
+      <a href="#features">功能</a>
+      <a href="#download">下载</a>
+      <a href="https://github.com/powerwangy-glitch/codeden">GitHub</a>
+    </nav>
+  </header>
+
+  <main id="top">
+    <section class="hero">
+      <div class="hero-copy">
+        <p class="eyebrow">Open-source macOS notch app for AI agents</p>
+        <h1>把 Mac 刘海做成 AI 员工监控室</h1>
+        <p class="lead">
+          码岛把 Codex、Claude Code 的运行状态搬到 MacBook 刘海上：
+          谁在执行、谁等你审批、谁刚完成，一眼就知道。
+        </p>
+        <div class="actions">
+          <a class="button primary" href="https://github.com/powerwangy-glitch/codeden/releases/download/v0.1.8/CodeDen-v0.1.8-mac.zip">
+            下载 macOS 版
+          </a>
+          <a class="button secondary" href="https://github.com/powerwangy-glitch/codeden">
+            查看源码
+          </a>
+        </div>
+        <div class="meta-row" aria-label="产品状态">
+          <span>免费开源</span>
+          <span>SwiftUI 原生</span>
+          <span>Claude Code / Codex</span>
+        </div>
+      </div>
+      <div class="hero-visual" aria-label="码岛界面预览">
+        <img src="assets/hero.png" alt="码岛 CodeDen 展开态界面截图">
+      </div>
+    </section>
+
+    <section class="section split" id="why">
+      <div>
+        <p class="eyebrow">Why it exists</p>
+        <h2>AI 写代码时，最烦的不是代码，是失控感。</h2>
+      </div>
+      <div class="text-stack">
+        <p>
+          当 Codex 和 Claude Code 同时跑任务时，它们可能正在执行、等待权限、已经卡住，
+          或者早就完成了。码岛把这些状态变成屏幕顶部一个随时可见的小岛。
+        </p>
+        <p>
+          它不是另一个需要你盯着看的窗口，而是贴在工作流边上的状态层。
+          你像老板一样看进度，需要处理时再介入。
+        </p>
+      </div>
+    </section>
+
+    <section class="section cards" id="features">
+      <article class="feature-card">
+        <span class="card-icon blue">●</span>
+        <h3>实时状态</h3>
+        <p>收起态显示运行数、审批提醒和完成状态；展开后看到任务、工具、项目和最近会话。</p>
+      </article>
+      <article class="feature-card">
+        <span class="card-icon yellow">●</span>
+        <h3>不切窗口审批</h3>
+        <p>Claude Code 请求权限时，直接在刘海里点允许或拒绝，决定会回写给 bridge。</p>
+      </article>
+      <article class="feature-card">
+        <span class="card-icon green">●</span>
+        <h3>一键跳回现场</h3>
+        <p>点击任务卡片，优先跳回对应 Codex thread、Claude Desktop 会话或终端 tab。</p>
+      </article>
+      <article class="feature-card">
+        <span class="card-icon pink">●</span>
+        <h3>有点可爱</h3>
+        <p>像素小怪兽、果冻开合、芯片电音和 agent 配色，让盯 AI 干活变得没那么焦虑。</p>
+      </article>
+    </section>
+
+    <section class="section product">
+      <div class="product-panel">
+        <div class="notch-demo">
+          <div class="notch-top">
+            <span class="sprite">▣</span>
+            <span class="quota">5h <b>1%</b> — 7d <b>14%</b></span>
+            <span class="status">agent 正在执行</span>
+          </div>
+          <div class="chips">
+            <span>需要处理 0</span>
+            <span class="active">运行中 2</span>
+            <span>刚完成 0</span>
+          </div>
+          <div class="task-card">
+            <span class="sprite green-sprite">▣</span>
+            <div>
+              <h3>CodeDen 官网</h3>
+              <p>正在使用 Codex · 48%</p>
+            </div>
+            <strong>Codex</strong>
+          </div>
+          <div class="task-card">
+            <span class="sprite yellow-sprite">▣</span>
+            <div>
+              <h3>发布说明整理</h3>
+              <p>等待 Claude Code 审批</p>
+            </div>
+            <strong class="yellow-text">Claude</strong>
+          </div>
+        </div>
+      </div>
+      <div class="text-stack">
+        <p class="eyebrow">Designed for daily use</p>
+        <h2>功能性、可爱性、实用性放在一起。</h2>
+        <p>
+          它满足一点“老板欲”：能看到不同 AI 进程在干嘛。也保留一点玩具感：
+          小怪兽会跳，岛体会弹，状态有声音提醒。更重要的是，它真的能少切窗口。
+        </p>
+      </div>
+    </section>
+
+    <section class="section install" id="download">
+      <div>
+        <p class="eyebrow">Download</p>
+        <h2>下载，解压，打开。</h2>
+        <p>首次打开如果被 Gatekeeper 拦截，请右键 NotchIsland.app，然后选择“打开”。</p>
+      </div>
+      <ol class="steps">
+        <li>下载 <a href="https://github.com/powerwangy-glitch/codeden/releases/download/v0.1.8/CodeDen-v0.1.8-mac.zip">CodeDen-v0.1.8-mac.zip</a></li>
+        <li>解压后把 NotchIsland.app 拖进 Applications</li>
+        <li>打开 App，按引导一键接入 Claude Code</li>
+      </ol>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <span>码岛 CodeDen · MIT-style open source spirit</span>
+    <a href="https://github.com/powerwangy-glitch/codeden/releases">Releases</a>
+  </footer>
+</body>
+</html>
